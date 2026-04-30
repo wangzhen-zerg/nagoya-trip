@@ -39,7 +39,7 @@ body {
     height: 100vh;
 }
 
-.app-container { display: flex; height: 100vh; }
+.app-container { display: flex; height: 100vh; flex-direction: row-reverse; }
 
 /* ===== 侧边栏 ===== */
 .sidebar {
@@ -157,7 +157,8 @@ body {
 /* ===== 地点列表 ===== */
 .places-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
 
-.places-list { display: flex; flex-direction: column; gap: 10px; }
+.places-list { display: flex; flex-direction: column; gap: 10px; transition: max-height 0.3s ease, opacity 0.2s; overflow: hidden; }
+.places-list.collapsed { max-height: 0 !important; opacity: 0; }
 
 .place-card {
     background: var(--gray-50);
@@ -458,21 +459,52 @@ body {
     margin-bottom: 8px;
 }
 
-.memo-title { font-size: 0.8rem; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 6px; }
+.memo-title { font-size: 0.8rem; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.memo-title .toggle-arrow { font-size: 0.65rem; transition: transform 0.2s; display: inline-block; }
+.memo-title:not(.collapsed) .toggle-arrow { transform: rotate(0deg); }
+.memo-title.collapsed .toggle-arrow { transform: rotate(-90deg); }
 
-.memo-textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: 10px;
-    border: 1px solid rgba(217,119,6,0.3);
-    border-radius: var(--radius);
-    font-size: 0.85rem;
-    resize: vertical;
-    background: white;
-    font-family: inherit;
+.memo-content { transition: max-height 0.3s ease, opacity 0.2s; overflow: hidden; max-height: 600px; }
+.memo-content.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
+
+.memo-add-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.memo-input {
+    flex: 1; padding: 8px 10px; border: 1px solid rgba(217,119,6,0.3); border-radius: var(--radius);
+    font-size: 0.85rem; font-family: inherit; outline: none;
 }
+.memo-input:focus { border-color: var(--warning); }
+.memo-add-btn {
+    padding: 8px 14px; background: var(--warning); color: white; border: none; border-radius: var(--radius);
+    font-size: 1rem; cursor: pointer; flex-shrink: 0;
+}
+.memo-add-btn:hover { background: #B45309; }
 
-.memo-textarea:focus { outline: none; border-color: var(--warning); }
+.memo-list { display: flex; flex-direction: column; gap: 4px; }
+
+.memo-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    background: white; border-radius: 8px; border: 1px solid var(--gray-200);
+    transition: all 0.2s;
+}
+.memo-item:hover { border-color: rgba(217,119,6,0.3); }
+.memo-item.done { opacity: 0.5; }
+.memo-item.done .memo-item-text { text-decoration: line-through; color: var(--gray-400); }
+
+.memo-checkbox {
+    width: 20px; height: 20px; accent-color: var(--warning); cursor: pointer; flex-shrink: 0;
+}
+.memo-item-text {
+    flex: 1; font-size: 0.85rem; color: var(--gray-700); min-width: 0;
+    word-break: break-all;
+}
+.memo-item-delete {
+    width: 22px; height: 22px; border: none; background: none; color: var(--gray-300);
+    cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; flex-shrink: 0;
+}
+.memo-item-delete:hover { background: rgba(220,38,38,0.1); color: var(--danger); }
+
+.memo-empty { font-size: 0.8rem; color: var(--gray-400); text-align: center; padding: 8px; }
 
 /* ===== 出行方式 ===== */
 .travel-mode-section { padding: 12px 16px; background: var(--gray-50); border-top: 1px solid var(--gray-200); flex-shrink: 0; }
@@ -677,7 +709,7 @@ body {
 
                 <section class="places-section">
                     <div class="section-header">
-                        <span class="section-title"><span>📍</span> 目的地</span>
+                        <span class="section-title" id="placesToggle"><span class="toggle-arrow">▼</span><span>📍</span> 目的地</span>
                         <button class="clear-btn" id="clearAllBtn" style="display:none;">清空全部</button>
                     </div>
                     <div class="places-list" id="placesList">
@@ -690,9 +722,15 @@ body {
 
                 <section class="memo-section">
                     <div class="memo-header">
-                        <span class="memo-title"><span>📝</span> 旅行备忘录</span>
+                        <span class="memo-title" id="memoToggle"><span class="toggle-arrow" style="transform:rotate(-90deg);">▼</span><span>📝</span> 旅行备忘录</span>
                     </div>
-                    <textarea class="memo-textarea" id="memoTextarea" placeholder="记录重要信息：西瓜卡余额、酒店地址、航班信息、紧急电话等..."></textarea>
+                    <div class="memo-content collapsed" id="memoContent">
+                        <div class="memo-add-row">
+                            <input type="text" class="memo-input" id="memoInput" placeholder="添加备忘事项，回车确认...">
+                            <button class="memo-add-btn" id="memoAddBtn">＋</button>
+                        </div>
+                        <div class="memo-list" id="memoList"></div>
+                    </div>
                 </section>
             </div>
 
@@ -1511,7 +1549,6 @@ const feeBreakdown = document.getElementById('feeBreakdown');
 const toast = document.getElementById('toast');
 const recommendedTags = document.getElementById('recommendedTags');
 const addAllBtn = document.getElementById('addAllBtn');
-const memoTextarea = document.getElementById('memoTextarea');
 
 // ===== Toast提示 =====
 function showToast(msg, dur = 2500) {
@@ -1552,6 +1589,17 @@ function initRecToggle() {
     recToggle.onclick = () => {
         recToggle.classList.toggle('collapsed');
         tags.classList.toggle('collapsed');
+    };
+}
+
+// 目的地收起/展开
+function initPlacesToggle() {
+    const placesToggle = document.getElementById('placesToggle');
+    const placesList = document.getElementById('placesList');
+
+    placesToggle.onclick = () => {
+        placesToggle.classList.toggle('collapsed');
+        placesList.classList.toggle('collapsed');
     };
 }
 
@@ -1886,12 +1934,74 @@ function initClearAllBtn() {
 }
 
 // ===== 备忘录初始化 =====
-function initMemo() {
-    memoTextarea.value = localStorage.getItem('nagoya_memo') || '';
+let memoItems = [];
 
-    memoTextarea.addEventListener('input', () => {
-        localStorage.setItem('nagoya_memo', memoTextarea.value);
+function initMemo() {
+    // 加载备忘录数据
+    const saved = localStorage.getItem('nagoya_memo_items');
+    memoItems = saved ? JSON.parse(saved) : [];
+
+    const memoInput = document.getElementById('memoInput');
+    const memoAddBtn = document.getElementById('memoAddBtn');
+    const memoList = document.getElementById('memoList');
+    const memoToggle = document.getElementById('memoToggle');
+    const memoContent = document.getElementById('memoContent');
+
+    // 收起/展开
+    memoToggle.onclick = () => {
+        memoToggle.classList.toggle('collapsed');
+        memoContent.classList.toggle('collapsed');
+    };
+
+    // 添加备忘
+    const addMemo = () => {
+        const text = memoInput.value.trim();
+        if (!text) return;
+        memoItems.push({ id: Date.now(), text, done: false });
+        saveMemo();
+        memoInput.value = '';
+        renderMemoList();
+    };
+
+    memoInput.addEventListener('keydown', e => { if (e.key === 'Enter') addMemo(); });
+    memoAddBtn.onclick = addMemo;
+
+    renderMemoList();
+}
+
+function renderMemoList() {
+    const memoList = document.getElementById('memoList');
+    if (memoItems.length === 0) {
+        memoList.innerHTML = '<div class="memo-empty">暂无备忘，添加一个吧 ✏️</div>';
+        return;
+    }
+    memoList.innerHTML = '';
+    memoItems.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = 'memo-item' + (item.done ? ' done' : '');
+        el.innerHTML = `
+            <input type="checkbox" class="memo-checkbox" ${item.done ? 'checked' : ''}>
+            <span class="memo-item-text">${item.text}</span>
+            <button class="memo-item-delete">✕</button>
+        `;
+        // 勾选
+        el.querySelector('.memo-checkbox').onchange = () => {
+            item.done = !item.done;
+            saveMemo();
+            renderMemoList();
+        };
+        // 删除
+        el.querySelector('.memo-item-delete').onclick = () => {
+            memoItems.splice(idx, 1);
+            saveMemo();
+            renderMemoList();
+        };
+        memoList.appendChild(el);
     });
+}
+
+function saveMemo() {
+    localStorage.setItem('nagoya_memo_items', JSON.stringify(memoItems));
 }
 
 // ===== 出行方式切换 =====
@@ -1950,6 +2060,7 @@ function init() {
 
     // 初始化事件绑定
     initRecToggle();
+    initPlacesToggle();
     initAddAllBtn();
     initClearAllBtn();
     initSearch();
