@@ -773,6 +773,25 @@ body {
     gap: 6px;
     margin-top: 10px;
 }
+
+/* 同步状态指示器 */
+.sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    margin-top: 8px;
+}
+.sync-status-icon { font-size: 0.85rem; }
+.sync-status-text { opacity: 0.9; }
+.sync-status.synced { background: rgba(5,150,105,0.3); }
+.sync-status.syncing { background: rgba(217,119,6,0.3); }
+.sync-status.offline { background: rgba(107,114,128,0.3); }
+.sync-status.error { background: rgba(220,38,38,0.3); }
+
 .cloud-btn {
     flex: 1;
     display: flex;
@@ -867,7 +886,39 @@ body {
 .token-status { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; margin-top: 8px; }
 .token-status.has-token { color: var(--success); }
 .token-status.no-token { color: var(--gray-400); }
-.cloud-status { font-size: 0.72rem; opacity: 0.8; margin-top: 4px; }
+
+/* Token未设置提示气泡 */
+.token-hint-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 60px;
+    background: var(--gray-800);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    margin-top: 6px;
+    z-index: 100;
+    display: none;
+    animation: fadeIn 0.2s;
+}
+.token-hint-popup.show { display: block; }
+.token-hint-popup::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 20px;
+    border-width: 0 6px 6px;
+    border-style: solid;
+    border-color: transparent transparent var(--gray-800);
+}
+.token-hint-popup a { color: #93C5FD; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* ===== 移动端布局调整 ===== */
 @media (max-width: 768px) {
@@ -894,6 +945,7 @@ body {
         max-height: calc(50vh - 160px);
     }
     .places-list { max-height: none; }
+    .sync-status { font-size: 0.7rem; padding: 5px 10px; }
 }
 </style>
 </head>
@@ -924,18 +976,23 @@ body {
                             打开链接即可同步所有数据
                         </div>
                     </div>
+                    <!-- 同步状态指示器 -->
+                    <div class="sync-status" id="syncStatus">
+                        <span class="sync-status-icon" id="syncIcon">☁️</span>
+                        <span class="sync-status-text" id="syncText">同步中...</span>
+                    </div>
                     <div class="cloud-toolbar">
-                        <button class="cloud-btn" id="cloudSaveBtn" title="保存数据到GitHub">
-                            <span>☁️</span>
-                            <span class="btn-text">云端保存</span>
-                        </button>
-                        <button class="cloud-btn" id="cloudLoadBtn" title="从GitHub加载数据">
-                            <span>📥</span>
-                            <span class="btn-text">云端加载</span>
+                        <button class="cloud-btn" id="syncBtn" title="立即同步">
+                            <span>↻</span>
+                            <span class="btn-text">立即同步</span>
                         </button>
                         <button class="settings-btn" id="settingsBtn" title="设置">⚙️</button>
+                        <!-- Token未设置提示 -->
+                        <div class="token-hint-popup" id="tokenHint">
+                            💡 设置Token后可自动保存到云端<br>
+                            <a href="#" id="openSettingsLink">去设置 →</a>
+                        </div>
                     </div>
-                    <div class="cloud-status" id="cloudStatus"></div>
                 </header>
 
                 <section class="recommended-section">
@@ -1027,7 +1084,7 @@ body {
                         <span>未设置Token</span>
                     </div>
                     <p class="settings-hint">
-                        用于保存数据到GitHub。<br>
+                        用于自动保存数据到GitHub。<br>
                         <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank">点击此处生成Token →</a><br>
                         勾选 <strong>repo</strong> 权限即可。
                     </p>
@@ -1035,9 +1092,10 @@ body {
                 <div class="settings-section">
                     <label class="settings-label">说明</label>
                     <p class="settings-hint">
-                        <strong>保存</strong>：需要Token，将数据保存到GitHub仓库<br>
-                        <strong>加载</strong>：无需Token，从公共仓库读取数据<br>
-                        <strong>分享</strong>：朋友打开同一页面即可看到你保存的数据
+                        <strong>自动同步</strong>：数据变更后2秒自动保存到云端<br>
+                        <strong>立即同步</strong>：手动触发同步<br>
+                        <strong>加载</strong>：无需Token，从公共仓库读取<br>
+                        <strong>分享</strong>：朋友打开同一页面即可看到你的数据
                     </p>
                 </div>
                 <div class="settings-actions">
@@ -1810,6 +1868,8 @@ function addSearchResult(lat, lng, name, address) {
     closeSearch();
     searchInput.value = '';
     showToast(`已添加：${name}`);
+    // 触发自动云端保存
+    autoSaveToCloud();
     // 添加后自动规划路线
     if (markersData.length >= 2) {
         planRoute();
@@ -1934,6 +1994,8 @@ function addRecommendedPlace(p) {
     updateButtons();
     fitBounds();
     showToast(`已添加：${p.name}`);
+    // 触发自动云端保存
+    autoSaveToCloud();
     // 添加后自动规划路线
     if (markersData.length >= 2) {
         planRoute();
@@ -1970,6 +2032,8 @@ function initAddAllBtn() {
             updateButtons();
             fitBounds();
             showToast(`已添加 ${cnt} 个地点！`);
+            // 触发自动云端保存
+            autoSaveToCloud();
             // 添加后自动规划路线
             if (markersData.length >= 2) {
                 planRoute();
@@ -2054,6 +2118,8 @@ function createPlaceCard(p, idx) {
         renderRecommendedTags();
         updateButtons();
         clearRoutes();
+        // 触发自动云端保存
+        autoSaveToCloud();
         // 如果还有2个以上地点且之前已规划过，自动重新规划
         if (markersData.length >= 2) {
             planRoute();
@@ -2072,6 +2138,8 @@ function createPlaceCard(p, idx) {
             }
             updateMarkers();
             saveToStorage();
+            // 触发自动云端保存
+            autoSaveToCloud();
         });
     });
 
@@ -2088,6 +2156,8 @@ function createPlaceCard(p, idx) {
             p.foods = p.foods.filter(f => f.id !== fid);
             saveToStorage();
             renderPlacesList();
+            // 触发自动云端保存
+            autoSaveToCloud();
         };
 
         fc.querySelectorAll('input, textarea, select').forEach(el => {
@@ -2096,6 +2166,8 @@ function createPlaceCard(p, idx) {
                 else if (el.dataset.f === 'resDays') food.resDays = el.value;
                 else food[el.dataset.f] = el.value;
                 saveToStorage();
+                // 触发自动云端保存
+                autoSaveToCloud();
             });
         });
     });
@@ -2141,7 +2213,8 @@ function initDragEvents(card, idx) {
         saveToStorage();
         renderPlacesList();
         target.classList.remove('drag-over');
-        
+        // 触发自动云端保存
+        autoSaveToCloud();
         // 拖拽排序后自动重新规划路线
         if (markersData.length >= 2) {
             planRoute();
@@ -2177,6 +2250,8 @@ function addFood(place, card) {
         place.foods = place.foods.filter(f => f.id !== food.id);
         saveToStorage();
         renderPlacesList();
+        // 触发自动云端保存
+        autoSaveToCloud();
     };
 
     fc.querySelectorAll('input, textarea, select').forEach(el => {
@@ -2185,10 +2260,14 @@ function addFood(place, card) {
             else if (el.dataset.f === 'resDays') food.resDays = el.value;
             else food[el.dataset.f] = el.value;
             saveToStorage();
+            // 触发自动云端保存
+            autoSaveToCloud();
         });
     });
 
     saveToStorage();
+    // 触发自动云端保存
+    autoSaveToCloud();
 }
 
 // ===== 创建美食卡片HTML =====
@@ -2256,6 +2335,8 @@ function initClearAllBtn() {
         updateButtons();
         clearRoutes();
         showToast('已清空');
+        // 触发自动云端保存
+        autoSaveToCloud();
     };
 }
 
@@ -2287,6 +2368,8 @@ function initMemo() {
         saveMemo();
         memoInput.value = '';
         renderMemoList();
+        // 触发自动云端保存
+        autoSaveToCloud();
     };
 
     memoInput.addEventListener('keydown', e => { if (e.key === 'Enter') addMemo(); });
@@ -2315,12 +2398,16 @@ function renderMemoList() {
             item.done = !item.done;
             saveMemo();
             renderMemoList();
+            // 触发自动云端保存
+            autoSaveToCloud();
         };
         // 删除
         el.querySelector('.memo-item-delete').onclick = () => {
             memoItems.splice(idx, 1);
             saveMemo();
             renderMemoList();
+            // 触发自动云端保存
+            autoSaveToCloud();
         };
         memoList.appendChild(el);
     });
@@ -2586,50 +2673,6 @@ function initShareBtn() {
     }
 }
 
-/**
- * 修改后的初始化函数 - 支持URL数据加载
- */
-function initWithUrlSupport() {
-    // 1. 初始化地图
-    initMap();
-    
-    // 2. 尝试从URL加载数据（优先级最高）
-    urlRestored = decodeStateFromUrl();
-    
-    // 3. 从本地存储加载数据（URL加载后会覆盖localStorage）
-    loadFromStorage();
-    
-    // 4. 如果从URL恢复了数据，显示提示
-    if (urlRestored) {
-        // 重新加载备忘录数据
-        const savedMemo = localStorage.getItem('nagoya_memo_items');
-        if (savedMemo) {
-            memoItems = JSON.parse(savedMemo);
-        }
-        showUrlRestoredBanner();
-        showToast('已从分享链接恢复数据', 3000);
-    }
-    
-    // 5. 渲染UI
-    renderRecommendedTags();
-    renderPlacesList();
-    
-    // 6. 初始化备忘录
-    initMemo();
-    
-    // 7. 初始化事件绑定
-    initRecToggle();
-    initPlacesToggle();
-    initAddAllBtn();
-    initClearAllBtn();
-    initSearch();
-    initTravelModeTabs();
-    initPlanBtn();
-    
-    // 8. 初始化分享按钮
-    initShareBtn();
-}
-
 // 挂载分享相关函数到window对象
 window.encodeStateToUrl = encodeStateToUrl;
 window.decodeStateFromUrl = decodeStateFromUrl;
@@ -2644,7 +2687,7 @@ window.saveToStorage = saveToStorage;
 window.loadFromStorage = loadFromStorage;
 
 /**
- * GitHub云端存储模块
+ * GitHub云端存储模块 - 默认云端自动同步
  */
 const GITHUB_CONFIG = {
     owner: 'wangzhen-zerg',
@@ -2652,6 +2695,11 @@ const GITHUB_CONFIG = {
     path: 'data/trip-data.json',
     apiBase: 'https://api.github.com/repos'
 };
+
+// ===== 自动同步状态管理 =====
+let syncStatus = 'synced'; // synced, syncing, offline, error
+let tokenHintShown = false; // 是否已显示过Token提示
+let autoSaveTimer = null; // 防抖定时器
 
 // ===== Token管理 =====
 function getToken() {
@@ -2661,6 +2709,12 @@ function getToken() {
 function saveToken(token) {
     localStorage.setItem('nagoya_github_token', token);
     updateTokenStatus();
+    // Token保存后隐藏提示
+    hideTokenHint();
+    // 如果有数据，立即同步
+    if (token) {
+        autoSaveToCloud();
+    }
 }
 
 function clearToken() {
@@ -2684,6 +2738,79 @@ function updateTokenStatus() {
     }
 }
 
+// ===== 同步状态指示器 =====
+
+/**
+ * 更新同步状态显示
+ */
+function updateSyncStatus(status, message) {
+    syncStatus = status;
+    const syncStatusEl = document.getElementById('syncStatus');
+    const syncIcon = document.getElementById('syncIcon');
+    const syncText = document.getElementById('syncText');
+    
+    if (!syncStatusEl) return;
+    
+    syncStatusEl.className = 'sync-status ' + status;
+    
+    switch (status) {
+        case 'synced':
+            syncIcon.textContent = '✓';
+            syncText.textContent = message || '已同步';
+            break;
+        case 'syncing':
+            syncIcon.textContent = '↻';
+            syncText.textContent = message || '同步中...';
+            break;
+        case 'offline':
+            syncIcon.textContent = '⚠';
+            syncText.textContent = message || '离线模式';
+            break;
+        case 'error':
+            syncIcon.textContent = '✕';
+            syncText.textContent = message || '同步失败';
+            break;
+    }
+    
+    // 3秒后恢复已同步状态（仅在非手动操作时）
+    if (status === 'synced' && !message) {
+        setTimeout(() => {
+            if (syncStatus === 'synced') {
+                updateSyncStatus('synced', '已同步');
+            }
+        }, 3000);
+    }
+}
+
+// ===== Token未设置提示 =====
+
+/**
+ * 显示Token设置提示
+ */
+function showTokenHint() {
+    if (tokenHintShown) return; // 只显示一次
+    tokenHintShown = true;
+    
+    const hint = document.getElementById('tokenHint');
+    if (hint) {
+        hint.classList.add('show');
+        // 5秒后自动隐藏
+        setTimeout(() => {
+            hint.classList.remove('show');
+        }, 5000);
+    }
+}
+
+/**
+ * 隐藏Token设置提示
+ */
+function hideTokenHint() {
+    const hint = document.getElementById('tokenHint');
+    if (hint) {
+        hint.classList.remove('show');
+    }
+}
+
 // ===== 设置面板 =====
 function initSettingsPanel() {
     const panel = document.getElementById('settingsPanel');
@@ -2693,11 +2820,13 @@ function initSettingsPanel() {
     const clearBtn = document.getElementById('clearTokenBtn');
     const toggleBtn = document.getElementById('toggleVisibility');
     const tokenInput = document.getElementById('tokenInput');
+    const openSettingsLink = document.getElementById('openSettingsLink');
     
     // 打开设置面板
     settingsBtn.addEventListener('click', () => {
         tokenInput.value = getToken();
         panel.classList.add('active');
+        hideTokenHint();
     });
     
     // 关闭设置面板
@@ -2737,10 +2866,23 @@ function initSettingsPanel() {
         }
     });
     
+    // 去设置链接
+    if (openSettingsLink) {
+        openSettingsLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            hideTokenHint();
+            settingsBtn.click();
+        });
+    }
+    
     updateTokenStatus();
 }
 
 // ===== GitHub API操作 =====
+
+/**
+ * 获取文件的SHA值
+ */
 async function getFileSha() {
     const token = getToken();
     const url = `${GITHUB_CONFIG.apiBase}/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
@@ -2767,13 +2909,15 @@ async function getFileSha() {
     }
 }
 
+/**
+ * 保存数据到GitHub（原始版本，用于手动保存）
+ */
 async function saveToGitHub() {
-    const btn = document.getElementById('cloudSaveBtn');
     const token = getToken();
     
     if (!token) {
-        showToast('请先在设置中输入GitHub Token');
-        document.getElementById('settingsBtn').click();
+        // 无Token时显示提示，但不阻止操作
+        showTokenHint();
         return;
     }
     
@@ -2782,14 +2926,11 @@ async function saveToGitHub() {
     const memos = JSON.parse(localStorage.getItem('nagoya_memo_items') || '[]');
     
     if (places.length === 0 && memos.length === 0) {
-        showToast('暂无数据，请先添加地点或备忘录');
+        // 空数据不保存
         return;
     }
     
-    // 显示加载状态
-    btn.classList.add('loading');
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-small"></span><span class="btn-text">保存中...</span>';
+    updateSyncStatus('syncing', '同步中...');
     
     try {
         // 准备数据
@@ -2825,28 +2966,22 @@ async function saveToGitHub() {
         });
         
         if (response.ok) {
-            showToast('☁️ 数据已保存到GitHub！');
-            updateCloudStatus('已同步到云端', true);
+            updateSyncStatus('synced', '已同步');
         } else {
             const error = await response.json();
             throw new Error(error.message || '保存失败');
         }
     } catch (error) {
         console.error('保存失败:', error);
-        showToast('保存失败: ' + error.message);
-    } finally {
-        btn.classList.remove('loading');
-        btn.innerHTML = originalHTML;
+        updateSyncStatus('error', '同步失败');
     }
 }
 
+/**
+ * 从GitHub加载数据
+ */
 async function loadFromGitHub() {
-    const btn = document.getElementById('cloudLoadBtn');
-    
-    // 显示加载状态
-    btn.classList.add('loading');
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-small"></span><span class="btn-text">加载中...</span>';
+    updateSyncStatus('syncing', '加载中...');
     
     try {
         const token = getToken();
@@ -2859,11 +2994,11 @@ async function loadFromGitHub() {
         
         if (!response.ok) {
             if (response.status === 404) {
-                showToast('云端暂无数据，请先保存');
-            } else {
-                throw new Error(`HTTP ${response.status}`);
+                // 文件不存在，这是正常的，不需要报错
+                updateSyncStatus('synced', '暂无云端数据');
+                return null;
             }
-            return;
+            throw new Error(`HTTP ${response.status}`);
         }
         
         const data = await response.json();
@@ -2872,7 +3007,80 @@ async function loadFromGitHub() {
         const jsonStr = decodeURIComponent(escape(atob(data.content)));
         const cloudData = JSON.parse(jsonStr);
         
-        // 恢复数据
+        // 返回数据，由调用方处理
+        return cloudData;
+        
+    } catch (error) {
+        console.error('加载失败:', error);
+        updateSyncStatus('offline', '加载失败，使用本地数据');
+        return null;
+    }
+}
+
+/**
+ * 自动云端保存（带防抖）
+ */
+function autoSaveToCloud() {
+    // 清除之前的定时器
+    if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+    }
+    
+    // 设置新的定时器，2秒后执行
+    autoSaveTimer = setTimeout(async () => {
+        const token = getToken();
+        
+        // 无Token时静默跳过（但显示提示一次）
+        if (!token) {
+            showTokenHint();
+            return;
+        }
+        
+        // 检查是否有数据
+        const places = JSON.parse(localStorage.getItem('nagoya_places') || '[]');
+        const memos = JSON.parse(localStorage.getItem('nagoya_memo_items') || '[]');
+        
+        if (places.length === 0 && memos.length === 0) {
+            return; // 空数据不保存
+        }
+        
+        await saveToGitHub();
+    }, 2000);
+}
+
+// ===== 立即同步按钮 =====
+function initSyncButton() {
+    const syncBtn = document.getElementById('syncBtn');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', () => {
+            // 立即执行保存
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+            }
+            saveToGitHub();
+        });
+    }
+}
+
+// ===== 云端按钮初始化 =====
+function initCloudButtons() {
+    initSyncButton();
+}
+
+// ===== 修改initWithUrlSupport，添加默认云端加载 =====
+const originalInitWithUrlSupport = initWithUrlSupport;
+initWithUrlSupport = async function() {
+    // 1. 初始化地图
+    initMap();
+    
+    // 2. 尝试从URL加载数据（优先级最高）
+    urlRestored = decodeStateFromUrl();
+    
+    // 3. 优先从云端加载数据
+    const cloudData = await loadFromGitHub();
+    
+    if (cloudData) {
+        // 云端有数据，恢复它
         if (cloudData.places) {
             localStorage.setItem('nagoya_places', JSON.stringify(cloudData.places));
         }
@@ -2882,76 +3090,69 @@ async function loadFromGitHub() {
             memoItems = cloudData.memoItems;
         }
         
-        // 更新UI
-        markersData = JSON.parse(localStorage.getItem('nagoya_places') || '[]');
-        addedIds.clear();
-        markersData.forEach(p => {
-            if (p.placeId) addedIds.add(p.placeId);
-        });
-        
-        clearAllMarkers();
-        markersData.forEach((p, i) => {
-            addMarker(p, i + 1);
-        });
-        
-        renderPlacesList();
-        renderRecommendedTags();
-        renderMemoList();
-        updateButtons();
-        
-        if (markersData.length > 0) {
-            fitBounds();
+        // 如果是从URL恢复的，显示提示
+        if (urlRestored) {
+            showUrlRestoredBanner();
         }
-        
-        showToast(`📥 已加载云端数据（${cloudData.places?.length || 0}个地点）`);
-        updateCloudStatus('已从云端加载', true);
-        
-    } catch (error) {
-        console.error('加载失败:', error);
-        showToast('加载失败: ' + error.message);
-    } finally {
-        btn.classList.remove('loading');
-        btn.innerHTML = originalHTML;
     }
-}
-
-function updateCloudStatus(msg, success) {
-    const status = document.getElementById('cloudStatus');
-    if (status) {
-        status.innerHTML = success ? `<span style="color:#90EE90;">✓ ${msg}</span>` : msg;
-        setTimeout(() => {
-            status.innerHTML = '';
-        }, 3000);
+    
+    // 4. 从本地存储加载数据（URL/云端加载后会覆盖localStorage）
+    loadFromStorage();
+    
+    // 5. 重新加载备忘录数据
+    const savedMemo = localStorage.getItem('nagoya_memo_items');
+    if (savedMemo) {
+        memoItems = JSON.parse(savedMemo);
     }
-}
-
-function initCloudButtons() {
-    document.getElementById('cloudSaveBtn').addEventListener('click', saveToGitHub);
-    document.getElementById('cloudLoadBtn').addEventListener('click', loadFromGitHub);
-}
-
-// ===== 修改initWithUrlSupport，添加云端功能初始化 =====
-const originalInitWithUrlSupport = initWithUrlSupport;
-initWithUrlSupport = function() {
-    originalInitWithUrlSupport();
+    
+    // 6. 渲染UI
+    renderRecommendedTags();
+    renderPlacesList();
+    
+    // 7. 初始化备忘录
+    initMemo();
+    
+    // 8. 初始化事件绑定
+    initRecToggle();
+    initPlacesToggle();
+    initAddAllBtn();
+    initClearAllBtn();
+    initSearch();
+    initTravelModeTabs();
+    initPlanBtn();
+    
+    // 9. 初始化分享按钮
+    initShareBtn();
+    
+    // 10. 初始化云端功能
     initSettingsPanel();
     initCloudButtons();
     
-    // 尝试自动加载云端数据（如果本地为空）
-    const saved = localStorage.getItem('nagoya_places');
-    if (!saved || saved === '[]') {
-        // 本地无数据，自动从云端加载
-        setTimeout(() => {
-            loadFromGitHub();
-        }, 1000);
+    // 11. 初始化同步状态
+    updateSyncStatus('synced', '已同步');
+    
+    // 12. 检查Token状态
+    if (!getToken() && !tokenHintShown) {
+        // 有数据但无Token时，延迟显示提示
+        const places = JSON.parse(localStorage.getItem('nagoya_places') || '[]');
+        const memos = JSON.parse(localStorage.getItem('nagoya_memo_items') || '[]');
+        if (places.length > 0 || memos.length > 0) {
+            setTimeout(() => {
+                showTokenHint();
+            }, 2000);
+        }
     }
 };
 
 // 挂载到window对象
 window.saveToGitHub = saveToGitHub;
 window.loadFromGitHub = loadFromGitHub;
+window.autoSaveToCloud = autoSaveToCloud;
 window.initSettingsPanel = initSettingsPanel;
 window.initCloudButtons = initCloudButtons;
+window.updateSyncStatus = updateSyncStatus;
+window.showTokenHint = showTokenHint;
+window.hideTokenHint = hideTokenHint;
 </script>
 </body>
 </html>
