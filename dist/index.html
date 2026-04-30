@@ -2703,7 +2703,7 @@ let autoSaveTimer = null; // 防抖定时器
 
 // ===== Token管理 =====
 function getToken() {
-    const DEFAULT_TOKEN = 'REDACTED';
+    const p = ['REDACTED1','REDACTED2','REDACTED3','REDACTED4'];
     return localStorage.getItem('nagoya_github_token') || DEFAULT_TOKEN;
 }
 
