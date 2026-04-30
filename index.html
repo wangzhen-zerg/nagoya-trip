@@ -541,6 +541,40 @@ body {
 .fee-breakdown-title { font-size: 0.78rem; font-weight: 600; color: var(--success); margin-bottom: 6px; }
 .fee-item { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--gray-600); margin-bottom: 3px; }
 
+/* ===== 公交路线链接按钮 ===== */
+.bus-fee-summary { margin-bottom: 10px; }
+.transit-links { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.transit-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.transit-link-btn.google-maps {
+    background: linear-gradient(135deg, #4285F4 0%, #3578E5 100%);
+    color: white;
+    border: none;
+}
+.transit-link-btn.google-maps:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66,133,244,0.4);
+}
+.transit-link-btn.yahoo-transit {
+    background: white;
+    color: #CC0000;
+    border: 1px solid #CC0000;
+}
+.transit-link-btn.yahoo-transit:hover {
+    background: #FFF5F5;
+}
+
 /* ===== 规划按钮 ===== */
 .plan-btn {
     width: 100%;
@@ -997,26 +1031,66 @@ function handleBus() {
     planBtn.classList.remove('loading');
     routePanel.classList.add('expanded');
 
-    totalFee.textContent = '¥--';
-    totalFeeRmb.textContent = '建议使用Google Maps查询';
-    totalTime.textContent = '--';
+    // 生成Google Maps公交路线链接
+    const mapsUrl = generateGoogleMapsTransitUrl();
+    
+    // 生成Yahoo乗換案内链接
+    const yahooUrl = generateYahooTransitUrl();
+    
+    // 计算预估费用
+    const feeInfo = calculateBusFee();
+    
+    totalFee.textContent = feeInfo.total > 0 ? `¥${feeInfo.total}` : '¥--';
+    totalFeeRmb.textContent = feeInfo.total > 0 ? `约¥${(feeInfo.total * JPY_TO_CNY).toFixed(0)}人民币` : '含多段换乘';
+    totalTime.textContent = feeInfo.estimatedTime || '--';
 
+    // 渲染路线段
     routeSegments.innerHTML = `
-        <div class="route-segment" style="background:rgba(217,119,6,0.1);">
+        <div class="route-segment" style="background:rgba(234,88,12,0.1);">
             <span class="segment-icon">🚌</span>
             <div class="segment-info">
-                <div class="segment-route">公交路线建议使用 Google Maps 或 NAVITIME 查询</div>
-                <div class="segment-detail">可查看实时公交和换乘方案</div>
+                <div class="segment-route">${markersData[0].name} → ${markersData[markersData.length - 1].name}</div>
+                <div class="segment-detail">${markersData.length > 2 ? `途经 ${markersData.length - 2} 个地点 · ` : ''}公交/地铁换乘</div>
             </div>
         </div>
+        ${feeInfo.segments.length > 0 ? feeInfo.segments.map(seg => `
+            <div class="route-segment" style="background:rgba(234,88,12,0.05);">
+                <span class="segment-icon">${seg.icon}</span>
+                <div class="segment-info">
+                    <div class="segment-route">${seg.route}</div>
+                    <div class="segment-detail">${seg.detail}</div>
+                </div>
+                <span class="segment-fee">¥${seg.fee}</span>
+            </div>
+        `).join('') : ''}
     `;
-    feeBreakdown.innerHTML = '';
+
+    // 费用明细区显示Google Maps按钮
+    feeBreakdown.innerHTML = `
+        <div class="fee-breakdown-title">🚇 公交路线查询</div>
+        <div class="bus-fee-summary">
+            <div class="fee-item"><span>地铁/电车</span><span>¥${feeInfo.subway || 0}</span></div>
+            ${feeInfo.meitetsu > 0 ? `<div class="fee-item"><span>名铁线</span><span>¥${feeInfo.meitetsu}</span></div>` : ''}
+            ${feeInfo.linimo > 0 ? `<div class="fee-item"><span>Linimo线</span><span>¥${feeInfo.linimo}</span></div>` : ''}
+            <div class="fee-item" style="border-top:1px dashed rgba(234,88,12,0.3);padding-top:6px;margin-top:4px;font-weight:600;">
+                <span>预估合计</span><span>¥${feeInfo.total}</span>
+            </div>
+        </div>
+        <div class="transit-links">
+            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="transit-link-btn google-maps">
+                <span>📱</span> 在 Google Maps 查看
+            </a>
+            <a href="${yahooUrl}" target="_blank" rel="noopener noreferrer" class="transit-link-btn yahoo-transit">
+                <span>🗾</span> Yahoo乗換案内
+            </a>
+        </div>
+    `;
 
     // 绘制简单连线
     if (markersData.length >= 2) {
         const pts = markersData.map(p => [p.lat, p.lng]);
         const polyline = L.polyline(pts, {
-            color: '#8B5CF6',
+            color: '#EA580C',
             weight: 3,
             opacity: 0.6,
             dashArray: '8,8'
@@ -1024,6 +1098,166 @@ function handleBus() {
         routeLayers.push(polyline);
         map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
     }
+}
+
+// ===== 生成Google Maps公交路线URL =====
+function generateGoogleMapsTransitUrl() {
+    if (markersData.length === 0) return 'https://www.google.com/maps';
+    
+    // 格式: https://www.google.com/maps/dir/lat1,lng1/lat2,lng2/.../@zoom,data=!3e3
+    const waypoints = markersData.map(p => `${p.lat},${p.lng}`).join('/');
+    // !3e3 = 公共交通模式
+    return `https://www.google.com/maps/dir/${waypoints}/@35.1,136.9,10z/data=!3e3`;
+}
+
+// ===== 生成Yahoo乗換案内URL =====
+function generateYahooTransitUrl() {
+    if (markersData.length < 2) return 'https://transit.yahoo.co.jp';
+    
+    // 搜索起点和终点的换乘方案
+    const from = encodeURIComponent(markersData[0].name);
+    const to = encodeURIComponent(markersData[markersData.length - 1].name);
+    return `https://transit.yahoo.co.jp/search/result?from=${from}&to=${to}`;
+}
+
+// ===== 计算公交预估费用 =====
+function calculateBusFee() {
+    const result = {
+        segments: [],
+        subway: 0,
+        meitetsu: 0,
+        linimo: 0,
+        total: 0,
+        estimatedTime: ''
+    };
+    
+    if (markersData.length < 2) return result;
+    
+    let totalTime = 0;
+    
+    // 分析每段路线的交通类型和费用
+    for (let i = 0; i < markersData.length - 1; i++) {
+        const from = markersData[i];
+        const to = markersData[i + 1];
+        const segResult = analyzeSegment(from, to);
+        
+        result.segments.push(segResult.segment);
+        
+        // 累计费用
+        if (segResult.type === 'meitetsu') {
+            result.meitetsu += segResult.fee;
+        } else if (segResult.type === 'linimo') {
+            result.linimo += segResult.fee;
+        } else {
+            result.subway += segResult.fee;
+        }
+        
+        totalTime += segResult.duration;
+    }
+    
+    // 计算总费用（名古屋地铁按段计费，其他累加）
+    result.subway = result.subway > 0 ? Math.max(230, result.subway) : 0;
+    result.total = result.subway + result.meitetsu + result.linimo;
+    
+    // 估算总时间
+    const h = Math.floor(totalTime / 60);
+    const m = Math.round(totalTime % 60);
+    result.estimatedTime = h > 0 ? `约${h}小时${m}分钟` : `约${m}分钟`;
+    
+    return result;
+}
+
+// ===== 分析单段路线的交通类型 =====
+function analyzeSegment(from, to) {
+    const lat1 = from.lat, lng1 = from.lng;
+    const lat2 = to.lat, lng2 = to.lng;
+    
+    // 计算直线距离（km）
+    const dist = getDistance(lat1, lng1, lat2, lng2);
+    const duration = Math.round(dist / 30 * 60); // 按30km/h估算
+    
+    // 检测是否是名铁常滑线区域（从名古屋往南到常滑）
+    const isMeitetsuTokoname = (
+        (lat1 > 35.1 && lat2 < 35.0 && lng1 > 136.85 && lng2 < 136.85) ||
+        (from.name.includes('常滑') || to.name.includes('常滑') || from.name.includes('中部国際空港') || to.name.includes('中部国際空港'))
+    );
+    
+    // 检测是否是Linimo线（东山线藤が丘到吉卜力公园/丰田博物馆）
+    const isLinimo = (
+        (from.name.includes('藤') || to.name.includes('藤')) &&
+        (from.name.includes('ジブリ') || to.name.includes('ジブリ') || 
+         from.name.includes('トヨタ') || to.name.includes('トヨタ') ||
+         from.name.includes('愛・地球博') || to.name.includes('愛・地球博'))
+    );
+    
+    // 名铁机场线检测
+    const isAirportLine = (
+        (from.name.includes('中部国際空港') || to.name.includes('中部国際空港') || 
+         from.name.includes('中部国際空港') || to.name.includes('中部国際空港')) &&
+        (from.name.includes('名古屋') || to.name.includes('名古屋'))
+    );
+    
+    if (isMeitetsuTokoname || isAirportLine) {
+        // 名铁线路
+        let fee = 740; // 常滑线基础
+        if (isAirportLine) fee = 870; // 机场线
+        
+        return {
+            type: 'meitetsu',
+            fee: fee,
+            duration: isAirportLine ? 30 : 35,
+            segment: {
+                icon: '🚃',
+                route: `${from.name} → ${to.name}`,
+                detail: '名铁电车',
+                fee: fee
+            }
+        };
+    }
+    
+    if (isLinimo) {
+        // Linimo磁悬浮线
+        return {
+            type: 'linimo',
+            fee: 400,
+            duration: 25,
+            segment: {
+                icon: '🚝',
+                route: `${from.name} → ${to.name}`,
+                detail: 'Linimo磁悬浮线',
+                fee: 400
+            }
+        };
+    }
+    
+    // 普通地铁/步行换乘
+    let subwayFee = 230;
+    if (dist > 15) subwayFee = 370;
+    else if (dist > 8) subwayFee = 300;
+    
+    return {
+        type: 'subway',
+        fee: subwayFee,
+        duration: duration + 5,
+        segment: {
+            icon: '🚇',
+            route: `${from.name} → ${to.name}`,
+            detail: '地铁/步行换乘',
+            fee: subwayFee
+        }
+    };
+}
+
+// ===== 计算两点间距离（km）=====
+function getDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // 地球半径
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
 // ===== 清空路线 =====
