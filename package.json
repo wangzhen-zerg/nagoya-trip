@@ -1,0 +1,18 @@
+{
+  "name": "nagoya-trip",
+  "version": "1.0.0",
+  "description": "名古屋旅行规划助手 - 地图标注+路线规划+费用估算",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "start": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "nagoya",
+    "travel",
+    "planner",
+    "map",
+    "leaflet"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名古屋出行规划助手</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <header class="header">
+                    <div class="header-top">
+                        <span style="font-size: 1.3rem;">🇯🇵</span>
+                        <div>
+                            <h1>名古屋出行规划</h1>
+                            <div class="header-subtitle">Nagoya Trip Planner</div>
+                        </div>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="searchInput" placeholder="搜索地点..." autocomplete="off">
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </header>
+
+                <section class="recommended-section">
+                    <div class="section-header">
+                        <span class="section-title collapsed" id="recToggle"><span class="toggle-arrow">▼</span><span>✨</span> 逛吃推荐</span>
+                        <button class="add-all-btn" id="addAllBtn">➕ 一键添加全部</button>
+                    </div>
+                    <div class="recommended-tags collapsed" id="recommendedTags"></div>
+                </section>
+
+                <section class="places-section">
+                    <div class="section-header">
+                        <span class="section-title"><span>📍</span> 目的地</span>
+                        <button class="clear-btn" id="clearAllBtn" style="display:none;">清空全部</button>
+                    </div>
+                    <div class="places-list" id="placesList">
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-state-icon">🗺️</div>
+                            <p class="empty-state-text">点击上方推荐或搜索添加地点</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="memo-section">
+                    <div class="memo-header">
+                        <span class="memo-title"><span>📝</span> 旅行备忘录</span>
+                    </div>
+                    <textarea class="memo-textarea" id="memoTextarea" placeholder="记录重要信息：西瓜卡余额、酒店地址、航班信息、紧急电话等..."></textarea>
+                </section>
+            </div>
+
+            <section class="travel-mode-section">
+                <div class="travel-mode-tabs">
+                    <button class="travel-mode-tab active" data-mode="driving"><span class="travel-mode-icon">🚗</span>驾车</button>
+                    <button class="travel-mode-tab" data-mode="walking"><span class="travel-mode-icon">🚶</span>步行</button>
+                    <button class="travel-mode-tab" data-mode="bus"><span class="travel-mode-icon">🚌</span>公交</button>
+                </div>
+                <div class="route-panel" id="routePanel">
+                    <div class="route-total">
+                        <div>
+                            <div class="route-total-label">预估费用</div>
+                            <div class="route-total-value"><span id="totalFee">¥0</span></div>
+                            <div class="route-total-rmb" id="totalFeeRmb"></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="route-total-label">预计时间</div>
+                            <div style="font-size:1.1rem;font-weight:600;" id="totalTime">--</div>
+                        </div>
+                    </div>
+                    <div class="route-segments" id="routeSegments"></div>
+                    <div class="fee-breakdown" id="feeBreakdown"></div>
+                </div>
+                <button class="plan-btn" id="planBtn" disabled>
+                    <span class="btn-text">🚗 添加至少2个地点</span>
+                    <span class="btn-loading"><span class="spinner"></span>规划中...</span>
+                </button>
+            </section>
+        </aside>
+        <div class="map-container"><div id="map"></div></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <!-- Leaflet 地图库 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- JS模块按顺序加载 -->
+    <script src="js/data.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/search.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
