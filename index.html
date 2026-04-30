@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名古屋出行规划助手</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23BC002D'/%3E%3Cellipse cx='16' cy='12' rx='8' ry='7' fill='%23fff'/%3E%3Cpath d='M8 8 L6 3 L11 6 Z' fill='%23fff'/%3E%3Cpath d='M24 8 L26 3 L21 6 Z' fill='%23fff'/%3E%3Cellipse cx='12' cy='11' rx='1.5' ry='2' fill='%23333'/%3E%3Cellipse cx='20' cy='11' rx='1.5' ry='2' fill='%23333'/%3E%3Cellipse cx='16' cy='14' rx='1' ry='0.8' fill='%23FFB6C1'/%3E%3Cline x1='6' y1='13' x2='10' y2='13.5' stroke='%23ccc' stroke-width='0.5'/%3E%3Cline x1='6' y1='15' x2='10' y2='14.5' stroke='%23ccc' stroke-width='0.5'/%3E%3Cline x1='26' y1='13' x2='22' y2='13.5' stroke='%23ccc' stroke-width='0.5'/%3E%3Cline x1='26' y1='15' x2='22' y2='14.5' stroke='%23ccc' stroke-width='0.5'/%3E%3Cellipse cx='16' cy='23' rx='9' ry='6' fill='%23fff'/%3E%3Ccircle cx='16' cy='20' r='1.5' fill='%23FFD700'/%3E%3Cellipse cx='23' cy='16' rx='2.5' ry='4' fill='%23fff' transform='rotate(-20 23 16)'/%3E%3Ccircle cx='11' cy='24' r='2' fill='%23FFD700' opacity='0.8'/%3E%3Ccircle cx='21' cy='24' r='2' fill='%23FFD700' opacity='0.8'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+/* ===== 全局样式 ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --primary: #DC2626;
+    --primary-light: #DC2626;
+    --primary-dark: #B91C1C;
+    --success: #059669;
+    --warning: #D97706;
+    --danger: #DC2626;
+    --jp-red: #BC002D;
+    --gray-50: #F9FAFB;
+    --gray-100: #F3F4F6;
+    --gray-200: #E5E7EB;
+    --gray-300: #D1D5DB;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --gray-600: #4B5563;
+    --gray-700: #374151;
+    --gray-800: #1F2937;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --radius: 12px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    overflow: hidden;
+    height: 100vh;
+}
+
+.app-container { display: flex; height: 100vh; }
+
+/* ===== 侧边栏 ===== */
+.sidebar {
+    width: 420px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.sidebar-content { flex: 1; overflow-y: auto; }
+
+/* ===== 头部 ===== */
+.header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    color: white;
+    flex-shrink: 0;
+}
+
+.header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+.header h1 { font-size: 1.1rem; font-weight: 600; }
+.header-subtitle { font-size: 0.75rem; opacity: 0.9; }
+
+.search-box { position: relative; }
+.search-input {
+    width: 100%;
+    padding: 10px 12px 10px 38px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.98);
+}
+
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); }
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    margin-top: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+}
+
+.search-results.active { display: block; }
+
+.search-result-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 0.85rem;
+}
+
+.search-result-item:hover { background: var(--gray-50); }
+.search-result-item:last-child { border-bottom: none; }
+.search-result-name { font-weight: 500; margin-bottom: 2px; }
+.search-result-address { font-size: 0.75rem; color: var(--gray-500); }
+
+/* ===== 预置推荐 ===== */
+.recommended-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+
+.section-title { font-size: 0.8rem; font-weight: 600; color: var(--gray-600); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.section-title .toggle-arrow { font-size: 0.65rem; transition: transform 0.2s; display: inline-block; }
+.section-title.collapsed .toggle-arrow { transform: rotate(-90deg); }
+.recommended-tags { transition: max-height 0.3s ease, opacity 0.2s; overflow: hidden; max-height: 800px; }
+.recommended-tags.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
+
+.add-all-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.add-all-btn:hover { background: #047857; }
+
+.recommended-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.recommended-tag {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 15px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.recommended-tag:hover { background: rgba(188,0,45,0.05); border-color: var(--primary-light); }
+.recommended-tag.added { background: rgba(5,150,105,0.1); border-color: var(--success); color: var(--success); }
+.recommended-tag .star { color: var(--warning); font-size: 0.65rem; }
+
+/* ===== 地点列表 ===== */
+.places-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
+
+.places-list { display: flex; flex-direction: column; gap: 10px; }
+
+.place-card {
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    overflow: hidden;
+}
+
+.place-card:hover { border-color: var(--primary-light); }
+.place-card.dragging { opacity: 0.5; transform: scale(1.02); box-shadow: var(--shadow-lg); }
+.place-card.drag-over { border-color: var(--primary); background: rgba(220,38,38,0.05); }
+
+.place-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: grab;
+}
+
+.place-number {
+    width: 26px;
+    height: 26px;
+    background: var(--jp-red);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.place-info { flex: 1; min-width: 0; }
+
+.place-name-input {
+    width: 100%;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: white;
+}
+
+.place-name-input:focus { outline: none; border-color: var(--primary); }
+
+.place-address {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.place-coords {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--gray-400);
+    align-items: center;
+}
+
+.place-coords input {
+    width: 95px;
+    padding: 3px 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.place-coords input:focus { outline: none; border-color: var(--primary); }
+
+.place-actions { display: flex; gap: 4px; }
+
+.place-action-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.9rem;
+}
+
+.place-action-btn:hover { background: var(--gray-200); color: var(--gray-600); }
+.place-action-btn.delete:hover { background: rgba(220,38,38,0.1); color: var(--danger); }
+.place-action-btn.expand-btn { font-size: 0.8rem; }
+
+.place-card.expanded .expand-icon { transform: rotate(180deg); }
+
+/* ===== 地点详情（展开区域）====== */
+.place-details { display: none; padding: 0 12px 12px; border-top: 1px solid var(--gray-200); }
+
+.place-card.expanded .place-details { display: block; }
+
+.place-notes {
+    margin-top: 10px;
+}
+
+.place-notes label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 4px;
+}
+
+.place-notes textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.place-notes textarea:focus { outline: none; border-color: var(--primary); }
+
+/* ===== 附近美食 ===== */
+.nearby-food { margin-top: 12px; }
+
+.nearby-food-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
+
+.add-food-btn {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    background: var(--warning);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.food-list { display: flex; flex-direction: column; gap: 8px; }
+
+.food-card {
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--gray-200);
+}
+
+.food-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.food-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--gray-800);
+    flex: 1;
+}
+
+.food-name-input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.food-name-input:focus { outline: none; border-color: var(--primary); }
+
+.food-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.food-tag {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.food-tag.reservation { background: rgba(220,38,38,0.1); color: var(--danger); }
+.food-tag.closed { background: rgba(217,119,6,0.1); color: var(--warning); }
+
+.food-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 0.75rem;
+}
+
+.food-detail-item { display: flex; gap: 4px; }
+.food-detail-label { color: var(--gray-500); }
+.food-detail-value { color: var(--gray-700); }
+
+.food-detail-item.full-width { grid-column: 1 / -1; }
+
+.food-detail-item input,
+.food-detail-item textarea,
+.food-detail-item select {
+    flex: 1;
+    padding: 3px 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.food-detail-item input:focus,
+.food-detail-item textarea:focus,
+.food-detail-item select:focus { outline: none; border-color: var(--primary); }
+
+.food-notes {
+    margin-top: 6px;
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    resize: none;
+    font-family: inherit;
+}
+
+.food-notes:focus { outline: none; border-color: var(--primary); }
+
+.food-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.food-action-btn {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.food-action-btn.save { background: var(--success); color: white; }
+.food-action-btn.delete { background: var(--gray-200); color: var(--gray-600); }
+.food-action-btn.delete:hover { background: var(--danger); color: white; }
+
+.food-placeholder {
+    text-align: center;
+    padding: 16px;
+    color: var(--gray-400);
+    font-size: 0.8rem;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--gray-400);
+}
+
+.empty-state-icon { font-size: 2rem; margin-bottom: 8px; }
+.empty-state-text { font-size: 0.85rem; }
+
+.clear-btn {
+    font-size: 0.78rem;
+    color: var(--danger);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.clear-btn:hover { background: rgba(220,38,38,0.1); }
+
+/* ===== 旅行备忘录 ===== */
+.memo-section {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(217,119,6,0.05) 0%, rgba(245,158,11,0.05) 100%);
+    border-top: 1px solid var(--gray-200);
+    flex-shrink: 0;
+}
+
+.memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.memo-title { font-size: 0.8rem; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 6px; }
+
+.memo-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid rgba(217,119,6,0.3);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    resize: vertical;
+    background: white;
+    font-family: inherit;
+}
+
+.memo-textarea:focus { outline: none; border-color: var(--warning); }
+
+/* ===== 出行方式 ===== */
+.travel-mode-section { padding: 12px 16px; background: var(--gray-50); border-top: 1px solid var(--gray-200); flex-shrink: 0; }
+
+.travel-mode-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.travel-mode-tab {
+    flex: 1;
+    padding: 8px;
+    border: 2px solid var(--gray-200);
+    background: white;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+}
+
+.travel-mode-tab:hover { border-color: var(--primary-light); }
+.travel-mode-tab.active { border-color: var(--jp-red); background: rgba(188,0,45,0.05); color: var(--jp-red); font-weight: 500; }
+.travel-mode-icon { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+
+/* ===== 路线信息 ===== */
+.route-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+.route-panel.expanded { max-height: 300px; overflow-y: auto; }
+
+.route-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    border-radius: var(--radius);
+    color: white;
+    margin-bottom: 10px;
+}
+
+.route-total-label { font-size: 0.75rem; opacity: 0.9; }
+.route-total-value { font-size: 1.3rem; font-weight: 700; }
+.route-total-rmb { font-size: 0.7rem; opacity: 0.8; }
+
+.route-segments { display: flex; flex-direction: column; gap: 6px; }
+
+.route-segment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--gray-50);
+    border-radius: 8px;
+}
+
+.segment-icon { font-size: 1.1rem; }
+.segment-info { flex: 1; }
+.segment-route { font-size: 0.82rem; color: var(--gray-700); margin-bottom: 2px; }
+.segment-detail { font-size: 0.72rem; color: var(--gray-500); }
+.segment-fee { font-size: 0.88rem; font-weight: 600; color: var(--success); }
+
+.fee-breakdown {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(5,150,105,0.08);
+    border-radius: var(--radius);
+    border: 1px dashed rgba(5,150,105,0.3);
+}
+
+.fee-breakdown-title { font-size: 0.78rem; font-weight: 600; color: var(--success); margin-bottom: 6px; }
+.fee-item { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--gray-600); margin-bottom: 3px; }
+
+/* ===== 规划按钮 ===== */
+.plan-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.plan-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.plan-btn:disabled { background: var(--gray-300); cursor: not-allowed; transform: none; box-shadow: none; }
+.plan-btn.loading .btn-text { display: none; }
+.plan-btn .btn-loading { display: none; }
+.plan-btn.loading .btn-loading { display: flex; align-items: center; gap: 8px; }
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 地图 ===== */
+.map-container { flex: 1; position: relative; }
+#map { width: 100%; height: 100%; }
+
+/* ===== 提示 ===== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--gray-800);
+    color: white;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+    .sidebar { width: 100%; position: absolute; bottom: 0; left: 0; height: auto; max-height: 75vh; border-radius: 16px 16px 0 0; }
+    .map-container { height: 25vh; }
+    .sidebar-content { max-height: calc(75vh - 200px); }
+    .places-list { max-height: none; }
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+</style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <header class="header">
+                    <div class="header-top">
+                        <span style="font-size: 1.3rem;">🇯🇵</span>
+                        <div>
+                            <h1>名古屋出行规划</h1>
+                            <div class="header-subtitle">Nagoya Trip Planner</div>
+                        </div>
+                    </div>
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" class="search-input" id="searchInput" placeholder="搜索地点..." autocomplete="off">
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </header>
+
+                <section class="recommended-section">
+                    <div class="section-header">
+                        <span class="section-title collapsed" id="recToggle"><span class="toggle-arrow">▼</span><span>✨</span> 逛吃推荐</span>
+                        <button class="add-all-btn" id="addAllBtn">➕ 一键添加全部</button>
+                    </div>
+                    <div class="recommended-tags collapsed" id="recommendedTags"></div>
+                </section>
+
+                <section class="places-section">
+                    <div class="section-header">
+                        <span class="section-title"><span>📍</span> 目的地</span>
+                        <button class="clear-btn" id="clearAllBtn" style="display:none;">清空全部</button>
+                    </div>
+                    <div class="places-list" id="placesList">
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-state-icon">🗺️</div>
+                            <p class="empty-state-text">点击上方推荐或搜索添加地点</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="memo-section">
+                    <div class="memo-header">
+                        <span class="memo-title"><span>📝</span> 旅行备忘录</span>
+                    </div>
+                    <textarea class="memo-textarea" id="memoTextarea" placeholder="记录重要信息：西瓜卡余额、酒店地址、航班信息、紧急电话等..."></textarea>
+                </section>
+            </div>
+
+            <section class="travel-mode-section">
+                <div class="travel-mode-tabs">
+                    <button class="travel-mode-tab active" data-mode="driving"><span class="travel-mode-icon">🚗</span>驾车</button>
+                    <button class="travel-mode-tab" data-mode="walking"><span class="travel-mode-icon">🚶</span>步行</button>
+                    <button class="travel-mode-tab" data-mode="bus"><span class="travel-mode-icon">🚌</span>公交</button>
+                </div>
+                <div class="route-panel" id="routePanel">
+                    <div class="route-total">
+                        <div>
+                            <div class="route-total-label">预估费用</div>
+                            <div class="route-total-value"><span id="totalFee">¥0</span></div>
+                            <div class="route-total-rmb" id="totalFeeRmb"></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="route-total-label">预计时间</div>
+                            <div style="font-size:1.1rem;font-weight:600;" id="totalTime">--</div>
+                        </div>
+                    </div>
+                    <div class="route-segments" id="routeSegments"></div>
+                    <div class="fee-breakdown" id="feeBreakdown"></div>
+                </div>
+                <button class="plan-btn" id="planBtn" disabled>
+                    <span class="btn-text">🚗 添加至少2个地点</span>
+                    <span class="btn-loading"><span class="spinner"></span>规划中...</span>
+                </button>
+            </section>
+        </aside>
+        <div class="map-container"><div id="map"></div></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <!-- Leaflet 地图库 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+/**
+ * 数据文件 - 预置地点数据和常量
+ * 在其他JS模块之前加载
+ */
+
+// 预置推荐地点数据
+const RECOMMENDED_PLACES = [
+    { id: 1, name: '名古屋城', nameJp: '名古屋城', lat: 35.1852, lng: 136.8999, desc: '地标必去', icon: '🏯', star: false },
+    { id: 2, name: '大须商店街', nameJp: '大須商店街', lat: 35.1574, lng: 136.8973, desc: '逛吃天堂', icon: '🛍️', star: false },
+    { id: 3, name: '荣商圈/绿洲21', nameJp: '栄オアシス21', lat: 35.1649, lng: 136.9078, desc: '购物夜景', icon: '✨', star: false },
+    { id: 4, name: '热田神宫', nameJp: '熱田神宮', lat: 35.1265, lng: 136.9093, desc: '散步参拜', icon: '⛩️', star: false },
+    { id: 5, name: '丰田产业技术纪念馆', nameJp: 'トヨタ産業技術記念館', lat: 35.0824, lng: 136.8864, desc: '主人必去', icon: '🔧', star: true },
+    { id: 6, name: '丰田会馆/丰田博物馆', nameJp: 'トヨタ博物館', lat: 35.0833, lng: 137.0803, desc: '主人必去', icon: '🚗', star: true, transportTip: '🚃 丰田博物馆位于长久手市，地铁东山线藤が丘站转Linimo线，芸大通り站下，步行约7分钟，用时约50分钟' },
+    { id: 7, name: '常滑招财猫街道', nameJp: '常滑招き猫通り', lat: 34.8833, lng: 136.8420, desc: '主人必去', icon: '🐱', star: true, transportTip: '🚃 常滑：名铁名古屋站乘常滑线直达，约30分钟' },
+    { id: 8, name: '常滑烧陶器街', nameJp: '常滑焼通り', lat: 34.8815, lng: 136.8398, desc: '陶瓷艺术', icon: '🏺', star: false },
+    { id: 9, name: '矢场町味噌猪排', nameJp: '矢場とん', lat: 35.1598, lng: 136.9032, desc: '名古屋名物', icon: '🍱', star: false },
+    { id: 10, name: '山本屋总本家', nameJp: '山本屋総本店', lat: 35.1685, lng: 136.9085, desc: '味噌煮乌冬', icon: '🍜', star: false },
+    { id: 11, name: '中部国际机场', nameJp: '中部国際空港', lat: 34.8583, lng: 136.8053, desc: '名古屋机场', icon: '✈️', star: false, transportTip: '🚃 名铁机场线名古屋站直达，约28分钟' },
+    { id: 12, name: '名古屋站', nameJp: '名古屋駅', lat: 35.1709, lng: 136.8825, desc: '交通枢纽', icon: '🚉', star: false },
+    { id: 13, name: '乐高乐园', nameJp: 'レゴランド・ジャパン', lat: 35.0513, lng: 136.8840, desc: '主题乐园', icon: '🎢', star: false, transportTip: '🚃 青波线从名古屋站到金城ふ頭站，步行3分钟' },
+    { id: 14, name: '名古屋港水族馆', nameJp: '名古屋港水族館', lat: 35.0937, lng: 136.8844, desc: '海洋世界', icon: '🐬', star: false, transportTip: '🚃 名港线名古屋港站步行3分钟' },
+    { id: 15, name: '吉卜力公园', nameJp: 'ジブリパーク', lat: 35.1774, lng: 137.0834, desc: '宫崎骏动画世界', icon: '🎠', star: false, transportTip: '🚃 东山线藤が丘站转Linimo，愛・地球博記念公園站下，约1小时' },
+    { id: 16, name: '东山动植物园', nameJp: '東山動植物園', lat: 35.1548, lng: 136.9753, desc: '日本第二大动物园', icon: '🦁', star: false, transportTip: '🚃 东山线东山公园站步行3分钟' },
+    { id: 17, name: '名古屋电视塔', nameJp: '中部電力ミライタワー', lat: 35.1705, lng: 136.9078, desc: '名古屋地标夜景', icon: '🗼', star: false },
+    { id: 18, name: '大须观音', nameJp: '大須観音', lat: 35.1558, lng: 136.8964, desc: '日本三大观音', icon: '🏯', star: false },
+    { id: 19, name: '德川美术馆/德川园', nameJp: '徳川美術館・徳川園', lat: 35.1870, lng: 136.9355, desc: '武士文化庭园', icon: '🏛️', star: false },
+    { id: 20, name: '磁浮铁道馆', nameJp: 'リニア・鉄道館', lat: 35.0880, lng: 136.8784, desc: '新干线磁浮列车', icon: '🚄', star: false, transportTip: '🚃 青波线金城ふ頭站步行2分钟' },
+    { id: 21, name: '广州市科学馆', nameJp: '名古屋市科学館', lat: 35.1635, lng: 136.9000, desc: '全球最大天象仪', icon: '🔬', star: false, transportTip: '🚃 东山线/鹤舞线伏见站步行5分钟' },
+    { id: 22, name: '白鸟庭园', nameJp: '白鳥庭園', lat: 35.1316, lng: 136.9105, desc: '日式庭园品茶', icon: '🦢', star: false, transportTip: '🚃 热田神宫西站步行7分钟，可和热田神宫同游' },
+    { id: 23, name: '则武之森', nameJp: 'ノリタケの森', lat: 35.0888, lng: 136.8788, desc: '百年陶瓷艺术', icon: '🍶', star: false, transportTip: '🚃 临近丰田产业技术纪念馆，可同日游览' },
+    { id: 24, name: '名花之里', nameJp: 'なばなの里', lat: 35.0183, lng: 136.7050, desc: '花卉灯光秀', icon: '🌸', star: false, transportTip: '🚃 名铁近铁长岛站转巴士约10分钟，冬季灯光秀必看' },
+    { id: 25, name: '有松老街', nameJp: '有松・鳴海絞りの町', lat: 35.0610, lng: 136.9490, desc: '江户绞染之乡', icon: '👘', star: false, transportTip: '🚃 名铁有松站步行5分钟' }
+];
+
+// 预置美食数据（按地点ID关联）
+const PRESET_FOOD = {
+    2: [ // 大须
+        { id: 'f1', name: '鳗鱼饭三定', dish: '蓬莱鳗鱼饭', hours: '11:00-14:00/16:30-20:30', closed: '周一', reservation: false, resDays: 0, price: '¥2000-3000', notes: '大须名物，午餐排队较多', isPreset: true },
+        { id: 'f2', name: '味味屋', dish: '味噌猪排', hours: '11:00-21:00', closed: '不定休', reservation: false, resDays: 0, price: '¥1500-2000', notes: '大须商店街内，随时可进', isPreset: true }
+    ],
+    3: [ // 荣
+        { id: 'f3', name: '山本屋总本家', dish: '味噌煮乌冬', hours: '11:00-21:00', closed: '无', reservation: false, resDays: 0, price: '¥1500-2500', notes: '名古屋味噌乌冬元祖，1800年创业', isPreset: true },
+        { id: 'f4', name: '矢场猪排', dish: '味噌猪排', hours: '10:30-21:00', closed: '无', reservation: false, resDays: 0, price: '¥1500-2000', notes: '名古屋必吃，排队常态建议避开饭点', isPreset: true }
+    ],
+    7: [ // 常滑
+        { id: 'f5', name: '常滑海鲜市场', dish: '新鲜海鲜丼', hours: '10:00-17:00', closed: '周三', reservation: false, resDays: 0, price: '¥1500-2500', notes: '靠近常滑站，适合午餐', isPreset: true },
+        { id: 'f6', name: '招财猫咖啡馆', dish: '猫爪咖啡拉花', hours: '9:00-18:00', closed: '无', reservation: false, resDays: 0, price: '¥800-1200', notes: '打卡必去，招财猫主题', isPreset: true }
+    ],
+    1: [ // 名古屋城
+        { id: 'f7', name: '蓬莱轩 本店', dish: '鳗鱼饭（ひつまぶし）', hours: '11:00-14:00/16:30-20:30', closed: '周三', reservation: true, resDays: '3-7', price: '¥3000-5000', notes: '名古屋鳗鱼饭天花板！非常热门，强烈建议预约', isPreset: true },
+        { id: 'f8', name: '宮きしめん 緒川', dish: '棊子面', hours: '10:00-20:00', closed: '无', reservation: false, resDays: 0, price: '¥1000-1500', notes: '名古屋当地棊子面名店', isPreset: true }
+    ],
+    4: [ // 热田神宫
+        { id: 'f9', name: 'どんどん庵', dish: '手打乌冬', hours: '10:30-18:00', closed: '周一', reservation: false, resDays: 0, price: '¥800-1200', notes: '热田神宫参道旁，参拜后正好吃', isPreset: true }
+    ],
+    6: [ // 丰田博物馆
+        { id: 'f10', name: '长久手花园餐厅', dish: '洋食套餐', hours: '11:00-15:00/17:00-21:00', closed: '周二', reservation: false, resDays: 0, price: '¥1500-2000', notes: '博物馆附近选择不多，这家比较靠谱', isPreset: true }
+    ],
+    5: [ // 丰田产业技术纪念馆
+        { id: 'f11', name: '名古屋站周边美食', dish: '推荐绿洲21地下街', hours: '各店不同', closed: '无', reservation: false, resDays: 0, price: '¥1000-3000', notes: '名古屋站内美食众多，推荐绿区地下街探索', isPreset: true }
+    ]
+};
+
+// ===== 常量定义 =====
+
+// 广州市中心坐标
+const NAGOYA_CENTER = [35.1815, 136.9066];
+
+// 日元兑人民币汇率
+const JPY_TO_CNY = 0.05;
+
+// 日本交通费用参数
+const JP_COSTS = {
+    highwayRate: 24.6,    // 高速费（元/公里）
+    gasPrice: 175,         // 汽油价格（日元/升）
+    fuelConsumption: 0.08 // 油耗（升/公里）
+};
+
+// 将常量挂载到window对象，供其他模块使用
+window.RECOMMENDED_PLACES = RECOMMENDED_PLACES;
+window.PRESET_FOOD = PRESET_FOOD;
+window.NAGOYA_CENTER = NAGOYA_CENTER;
+window.JPY_TO_CNY = JPY_TO_CNY;
+window.JP_COSTS = JP_COSTS;
+
+/**
+ * 地图模块 - 地图初始化、标记、路线规划相关
+ */
+
+// ===== 全局变量 =====
+
+// 地图实例
+let map = null;
+
+// 标记数组
+let markers = [];
+
+// 路线图层数组
+let routeLayers = [];
+
+// 路线规划模式（driving/walking/bus）
+let currentMode = 'driving';
+
+// ===== 地图初始化 =====
+function initMap() {
+    map = L.map('map', {
+        center: NAGOYA_CENTER,
+        zoom: 12,
+        zoomControl: true
+    });
+
+    // 添加OpenStreetMap图层
+    L.tileLayer('https://tile.openstreetmap.jp/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 点击地图关闭搜索结果
+    map.on('click', () => {
+        if (typeof closeSearch === 'function') {
+            closeSearch();
+        }
+    });
+
+    return map;
+}
+
+// ===== 添加标记 =====
+function addMarker(p, idx) {
+    // 创建自定义图标
+    const icon = L.divIcon({
+        className: 'mi',
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:#BC002D;border:2px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 4px rgba(0,0,0,0.3);"><span style="transform:rotate(45deg);color:white;font-weight:bold;font-size:11px;">${idx}</span></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
+    });
+
+    // 添加标记
+    const marker = L.marker([p.lat, p.lng], { icon })
+        .addTo(map)
+        .bindPopup(`<strong>${p.name}</strong>`);
+
+    markers.push(marker);
+    return marker;
+}
+
+// ===== 更新所有标记 =====
+function updateMarkers() {
+    markers.forEach((m, i) => {
+        const p = markersData[i];
+        if (!p) return;
+
+        // 更新位置
+        m.setLatLng([p.lat, p.lng]);
+        m.setPopupContent(`<strong>${p.name}</strong>`);
+
+        // 更新图标序号
+        const icon = L.divIcon({
+            className: 'mi',
+            html: `<div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:#BC002D;border:2px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 4px rgba(0,0,0,0.3);"><span style="transform:rotate(45deg);color:white;font-weight:bold;font-size:11px;">${i + 1}</span></div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 28],
+            popupAnchor: [0, -28]
+        });
+        m.setIcon(icon);
+    });
+}
+
+// ===== 调整视图以显示所有标记 =====
+function fitBounds() {
+    if (markersData.length > 0) {
+        const bounds = L.latLngBounds(markersData.map(p => [p.lat, p.lng]));
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// ===== 删除标记 =====
+function removeMarker(idx) {
+    if (markers[idx]) {
+        map.removeLayer(markers[idx]);
+        markers.splice(idx, 1);
+    }
+}
+
+// ===== 清空所有标记 =====
+function clearAllMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+}
+
+// ===== 规划路线 =====
+function planRoute() {
+    if (markersData.length < 2) {
+        showToast('至少需要2个地点才能规划路线');
+        return;
+    }
+
+    planBtn.classList.add('loading');
+    clearRoutes();
+
+    if (currentMode === 'bus') {
+        handleBus();
+        return;
+    }
+
+    // 构建OSRM路由请求
+    const pts = markersData.map(p => [p.lng, p.lat]).join(';');
+    const profile = currentMode === 'driving' ? 'driving' : 'foot';
+    const url = `https://router.project-osrm.org/route/v1/${profile}/${pts}?overview=full&geometries=geojson`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.routes && data.routes[0]) {
+                displayRoute(data.routes[0]);
+            } else {
+                showToast('未找到路线');
+            }
+        })
+        .catch(() => showToast('路线规划失败'))
+        .finally(() => planBtn.classList.remove('loading'));
+}
+
+// ===== 显示路线 =====
+function displayRoute(route) {
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+    // 根据出行方式设置路线颜色
+    const lineColor = currentMode === 'driving' ? '#3B82F6' : '#10B981';
+
+    // 绘制路线
+    const polyline = L.polyline(coords, {
+        color: lineColor,
+        weight: 5,
+        opacity: 0.8
+    }).addTo(map);
+    routeLayers.push(polyline);
+
+    // 计算距离和时间
+    const dist = route.distance;
+    const dur = route.duration;
+    const distKm = (dist / 1000).toFixed(1);
+    const h = Math.floor(dur / 3600);
+    const m = Math.floor((dur % 3600) / 60);
+    const timeStr = h > 0 ? `${h}小时${m}分钟` : `${m}分钟`;
+
+    // 计算费用
+    let fee = 0;
+    let feeDetail = '';
+    if (currentMode === 'driving') {
+        const highwayFee = Math.round(distKm * JP_COSTS.highwayRate);
+        const gasFee = Math.round(distKm * JP_COSTS.fuelConsumption * JP_COSTS.gasPrice);
+        fee = highwayFee + gasFee;
+        feeDetail = `<div class="fee-item"><span>高速费</span><span>¥${highwayFee} (约¥${(highwayFee * JPY_TO_CNY).toFixed(1)})</span></div>
+                     <div class="fee-item"><span>油费</span><span>¥${gasFee} (约¥${(gasFee * JPY_TO_CNY).toFixed(1)})</span></div>`;
+    }
+
+    // 更新UI
+    routePanel.classList.add('expanded');
+    totalFee.textContent = fee > 0 ? `¥${fee}` : '¥0';
+    totalFeeRmb.textContent = fee > 0 ? `约¥${(fee * JPY_TO_CNY).toFixed(1)}人民币` : '';
+    totalTime.textContent = timeStr;
+
+    // 渲染路线段
+    routeSegments.innerHTML = `
+        <div class="route-segment">
+            <span class="segment-icon">📍</span>
+            <div class="segment-info">
+                <div class="segment-route">${markersData[0].name} → ${markersData[markersData.length - 1].name}</div>
+                <div class="segment-detail">⏱️ ${timeStr} · 📏 ${distKm}km</div>
+            </div>
+            ${fee > 0 ? `<span class="segment-fee">¥${fee}</span>` : ''}
+        </div>
+        ${markersData.length > 2 ? `<div class="route-segment" style="background:rgba(59,130,246,0.1);">
+            <span class="segment-icon">🚏</span>
+            <div class="segment-info">
+                <div class="segment-route">途经 ${markersData.length - 2} 个地点</div>
+                <div class="segment-detail">${markersData.slice(1, -1).map(p => `• ${p.name}`).join(' ')}</div>
+            </div>
+        </div>` : ''}
+    `;
+
+    // 渲染费用明细
+    feeBreakdown.innerHTML = fee > 0 ? `
+        <div class="fee-breakdown-title">💰 费用明细</div>
+        ${feeDetail}
+        <div class="fee-item" style="border-top:1px dashed rgba(5,150,105,0.3);padding-top:6px;margin-top:4px;font-weight:600;">
+            <span>合计</span><span>¥${fee} (约¥${(fee * JPY_TO_CNY).toFixed(1)})</span>
+        </div>
+    ` : '';
+
+    // 调整视图
+    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+}
+
+// ===== 公交模式处理 =====
+function handleBus() {
+    planBtn.classList.remove('loading');
+    routePanel.classList.add('expanded');
+
+    totalFee.textContent = '¥--';
+    totalFeeRmb.textContent = '建议使用Google Maps查询';
+    totalTime.textContent = '--';
+
+    routeSegments.innerHTML = `
+        <div class="route-segment" style="background:rgba(217,119,6,0.1);">
+            <span class="segment-icon">🚌</span>
+            <div class="segment-info">
+                <div class="segment-route">公交路线建议使用 Google Maps 或 NAVITIME 查询</div>
+                <div class="segment-detail">可查看实时公交和换乘方案</div>
+            </div>
+        </div>
+    `;
+    feeBreakdown.innerHTML = '';
+
+    // 绘制简单连线
+    if (markersData.length >= 2) {
+        const pts = markersData.map(p => [p.lat, p.lng]);
+        const polyline = L.polyline(pts, {
+            color: '#8B5CF6',
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '8,8'
+        }).addTo(map);
+        routeLayers.push(polyline);
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+    }
+}
+
+// ===== 清空路线 =====
+function clearRoutes() {
+    routeLayers.forEach(l => map.removeLayer(l));
+    routeLayers = [];
+    routePanel.classList.remove('expanded');
+}
+
+// ===== 切换出行方式 =====
+function switchTravelMode(mode) {
+    document.querySelectorAll('.travel-mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.travel-mode-tab[data-mode="${mode}"]`).classList.add('active');
+    currentMode = mode;
+
+    // 如果已有路线，重新规划
+    if (markersData.length >= 2) {
+        planRoute();
+    }
+}
+
+// 挂载到window对象
+window.initMap = initMap;
+window.addMarker = addMarker;
+window.updateMarkers = updateMarkers;
+window.fitBounds = fitBounds;
+window.removeMarker = removeMarker;
+window.clearAllMarkers = clearAllMarkers;
+window.planRoute = planRoute;
+window.displayRoute = displayRoute;
+window.handleBus = handleBus;
+window.clearRoutes = clearRoutes;
+window.switchTravelMode = switchTravelMode;
+
+/**
+ * 搜索模块 - 本地搜索和在线搜索功能
+ */
+
+// ===== DOM元素 =====
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+
+// ===== 搜索定时器 =====
+let searchTimer = null;
+
+// ===== 搜索输入事件 =====
+function initSearch() {
+    searchInput.addEventListener('input', () => {
+        const keyword = searchInput.value.trim();
+
+        if (searchTimer) clearTimeout(searchTimer);
+
+        if (keyword.length < 1) {
+            closeSearch();
+            return;
+        }
+
+        // 先展示本地匹配结果
+        const localResults = searchLocal(keyword);
+        if (localResults.length > 0) {
+            renderSearchResults(localResults, true);
+            searchResults.classList.add('active');
+        }
+
+        // 再异步请求在线搜索
+        searchTimer = setTimeout(() => searchOnline(keyword), 600);
+    });
+
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim().length >= 1 && searchResults.children.length > 0) {
+            searchResults.classList.add('active');
+        }
+    });
+}
+
+// ===== 本地搜索：匹配预设地点 =====
+function searchLocal(keyword) {
+    const lower = keyword.toLowerCase();
+    return RECOMMENDED_PLACES.filter(p => {
+        return p.name.toLowerCase().includes(lower) ||
+               p.nameJp.toLowerCase().includes(lower) ||
+               p.desc.toLowerCase().includes(lower);
+    }).map(p => ({
+        lat: p.lat,
+        lon: p.lng,
+        name: p.name,
+        address: p.nameJp + ' · ' + p.desc,
+        placeId: p.id,
+        isLocal: true
+    }));
+}
+
+// ===== 在线搜索：使用 Photon API 和 Nominatim =====
+async function searchOnline(keyword) {
+    const localResults = searchLocal(keyword);
+    let onlineResults = [];
+
+    // 尝试 Photon API (komoot)
+    try {
+        const response = await fetch(
+            `https://photon.komoot.io/api/?q=${encodeURIComponent(keyword)}&limit=6&lang=ja`,
+            { signal: AbortSignal.timeout(5000) }
+        );
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+            onlineResults = data.features.map(f => ({
+                lat: f.geometry.coordinates[1],
+                lon: f.geometry.coordinates[0],
+                name: (f.properties.name || f.properties.street || '').split(',')[0],
+                address: [f.properties.city, f.properties.state, f.properties.country].filter(Boolean).join(', '),
+                isLocal: false
+            })).filter(r => r.name);
+        }
+    } catch (e) {
+        console.warn('Photon search failed, trying Nominatim...', e);
+
+        // 尝试 Nominatim 作为备选
+        try {
+            const response2 = await fetch(
+                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(keyword)}&format=json&limit=6&accept-language=ja,en,zh`,
+                {
+                    headers: { 'User-Agent': 'NagoyaTripPlanner/1.0' },
+                    signal: AbortSignal.timeout(5000)
+                }
+            );
+            const data2 = await response2.json();
+
+            if (data2.length > 0) {
+                onlineResults = data2.map(p => ({
+                    lat: p.lat,
+                    lon: p.lon,
+                    name: p.display_name.split(',')[0],
+                    address: p.display_name.replace(/^[^,]+,/, '').slice(0, 60),
+                    isLocal: false
+                }));
+            }
+        } catch (e2) {
+            console.warn('Nominatim also failed', e2);
+        }
+    }
+
+    // 合并结果：本地在前，去重
+    const allResults = [...localResults];
+    const localNames = new Set(localResults.map(r => r.name));
+    onlineResults.forEach(r => {
+        if (!localNames.has(r.name)) allResults.push(r);
+    });
+
+    if (allResults.length === 0) {
+        searchResults.innerHTML = '<div class="search-result-item"><div class="search-result-name">未找到结果，试试日语或英语关键词</div></div>';
+    } else {
+        renderSearchResults(allResults, false);
+    }
+    searchResults.classList.add('active');
+}
+
+// ===== 渲染搜索结果 =====
+function renderSearchResults(results, isLocalOnly) {
+    searchResults.innerHTML = '';
+
+    results.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `<div class="search-result-name">${r.isLocal ? '⭐ ' : ''}${r.name}</div><div class="search-result-address">${r.address || ''}</div>`;
+
+        item.addEventListener('click', () => {
+            if (r.isLocal && r.placeId && !addedIds.has(r.placeId)) {
+                // 从预设添加
+                const place = RECOMMENDED_PLACES.find(p => p.id === r.placeId);
+                if (place) addRecommendedPlace(place);
+            } else if (!r.isLocal) {
+                addSearchResult(r.lat, r.lon, r.name, r.address);
+            } else {
+                showToast('该地点已添加');
+            }
+            closeSearch();
+            searchInput.value = '';
+        });
+
+        searchResults.appendChild(item);
+    });
+
+    if (!isLocalOnly) searchResults.classList.add('active');
+}
+
+// ===== 添加搜索结果地点 =====
+function addSearchResult(lat, lng, name, address) {
+    const data = {
+        id: Date.now(),
+        name: name,
+        nameJp: name,
+        address: address,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        notes: '',
+        foods: [],
+        placeId: null
+    };
+
+    markersData.push(data);
+    addMarker(data, markersData.length);
+    saveToStorage();
+    renderPlacesList();
+    updateButtons();
+    fitBounds();
+    closeSearch();
+    searchInput.value = '';
+    showToast(`已添加：${name}`);
+}
+
+// ===== 关闭搜索结果 =====
+function closeSearch() {
+    searchResults.classList.remove('active');
+}
+
+// 挂载到window对象
+window.initSearch = initSearch;
+window.searchLocal = searchLocal;
+window.searchOnline = searchOnline;
+window.renderSearchResults = renderSearchResults;
+window.addSearchResult = addSearchResult;
+window.closeSearch = closeSearch;
+
+/**
+ * UI模块 - UI渲染、事件绑定相关
+ */
+
+// ===== 全局变量 =====
+
+// 已添加地点的ID集合
+let addedIds = new Set();
+
+// 拖拽源索引
+let dragSrcIdx = null;
+
+// 美食ID计数器
+let globalFoodId = 1000;
+
+// ===== DOM元素 =====
+const placesList = document.getElementById('placesList');
+const emptyState = document.getElementById('emptyState');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const planBtn = document.getElementById('planBtn');
+const routePanel = document.getElementById('routePanel');
+const routeSegments = document.getElementById('routeSegments');
+const totalFee = document.getElementById('totalFee');
+const totalFeeRmb = document.getElementById('totalFeeRmb');
+const totalTime = document.getElementById('totalTime');
+const feeBreakdown = document.getElementById('feeBreakdown');
+const toast = document.getElementById('toast');
+const recommendedTags = document.getElementById('recommendedTags');
+const addAllBtn = document.getElementById('addAllBtn');
+const memoTextarea = document.getElementById('memoTextarea');
+
+// ===== Toast提示 =====
+function showToast(msg, dur = 2500) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), dur);
+}
+
+// ===== 渲染推荐地点标签 =====
+function renderRecommendedTags() {
+    recommendedTags.innerHTML = '';
+
+    RECOMMENDED_PLACES.forEach(p => {
+        const tag = document.createElement('div');
+        tag.className = 'recommended-tag' + (addedIds.has(p.id) ? ' added' : '');
+        tag.innerHTML = `<span>${p.icon}</span><span>${p.name}</span>${p.star ? '<span class="star">⭐</span>' : ''}`;
+
+        tag.onclick = () => {
+            if (addedIds.has(p.id)) {
+                showToast(`${p.name} 已添加`);
+                return;
+            }
+            if (p.transportTip) {
+                showToast(p.transportTip, 4000);
+            }
+            addRecommendedPlace(p);
+        };
+
+        recommendedTags.appendChild(tag);
+    });
+}
+
+// ===== 逛吃推荐收起/展开 =====
+function initRecToggle() {
+    const recToggle = document.getElementById('recToggle');
+    const tags = document.getElementById('recommendedTags');
+
+    recToggle.onclick = () => {
+        recToggle.classList.toggle('collapsed');
+        tags.classList.toggle('collapsed');
+    };
+}
+
+// ===== 添加推荐地点 =====
+function addRecommendedPlace(p) {
+    const data = {
+        id: Date.now(),
+        placeId: p.id,
+        name: p.name,
+        nameJp: p.nameJp,
+        lat: p.lat,
+        lng: p.lng,
+        notes: '',
+        foods: PRESET_FOOD[p.id] ? JSON.parse(JSON.stringify(PRESET_FOOD[p.id])) : []
+    };
+
+    markersData.push(data);
+    addedIds.add(p.id);
+    addMarker(data, markersData.length);
+    saveToStorage();
+    renderPlacesList();
+    renderRecommendedTags();
+    updateButtons();
+    fitBounds();
+    showToast(`已添加：${p.name}`);
+}
+
+// ===== 一键添加全部 =====
+function initAddAllBtn() {
+    addAllBtn.onclick = () => {
+        let cnt = 0;
+        RECOMMENDED_PLACES.forEach(p => {
+            if (!addedIds.has(p.id)) {
+                const data = {
+                    id: Date.now() + cnt,
+                    placeId: p.id,
+                    name: p.name,
+                    nameJp: p.nameJp,
+                    lat: p.lat,
+                    lng: p.lng,
+                    notes: '',
+                    foods: PRESET_FOOD[p.id] ? JSON.parse(JSON.stringify(PRESET_FOOD[p.id])) : []
+                };
+                markersData.push(data);
+                addedIds.add(p.id);
+                addMarker(data, markersData.length);
+                cnt++;
+            }
+        });
+
+        if (cnt > 0) {
+            saveToStorage();
+            renderPlacesList();
+            renderRecommendedTags();
+            updateButtons();
+            fitBounds();
+            showToast(`已添加 ${cnt} 个地点！`);
+        } else {
+            showToast('全部已添加');
+        }
+    };
+}
+
+// ===== 渲染地点列表 =====
+function renderPlacesList() {
+    if (markersData.length === 0) {
+        emptyState.style.display = 'block';
+        clearAllBtn.style.display = 'none';
+        placesList.querySelectorAll('.place-card').forEach(el => el.remove());
+        return;
+    }
+
+    emptyState.style.display = 'none';
+    clearAllBtn.style.display = 'block';
+    placesList.querySelectorAll('.place-card').forEach(el => el.remove());
+
+    markersData.forEach((p, i) => {
+        const card = createPlaceCard(p, i);
+        placesList.appendChild(card);
+    });
+}
+
+// ===== 创建地点卡片 =====
+function createPlaceCard(p, idx) {
+    const card = document.createElement('div');
+    card.className = 'place-card';
+    card.dataset.index = idx;
+    card.draggable = true;
+
+    const foodsHtml = (p.foods || []).map(f => createFoodCardHtml(f)).join('');
+    const hasFoods = (p.foods || []).length > 0;
+
+    card.innerHTML = `
+        <div class="place-card-header">
+            <div class="place-number">${idx + 1}</div>
+            <div class="place-info">
+                <input type="text" class="place-name-input" value="${p.name}" data-field="name">
+                <div class="place-address">${p.nameJp || ''}</div>
+            </div>
+            <div class="place-actions">
+                <button class="place-action-btn expand-btn" title="展开/收起">▼</button>
+                <button class="place-action-btn delete" title="删除">✕</button>
+            </div>
+        </div>
+        <div class="place-details">
+            <div class="place-notes">
+                <label>📝 备注文本</label>
+                <textarea placeholder="记录这个地点的备注信息..." data-field="notes">${p.notes || ''}</textarea>
+            </div>
+            <div class="nearby-food">
+                <div class="nearby-food-title">
+                    <span>🍜 附近美食推荐</span>
+                    <button class="add-food-btn" data-action="add-food">➕ 添加美食</button>
+                </div>
+                <div class="food-list">
+                    ${hasFoods ? foodsHtml : '<div class="food-placeholder">暂无美食推荐，点击添加</div>'}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 展开/收起
+    card.querySelector('.expand-btn').onclick = () => {
+        card.classList.toggle('expanded');
+    };
+
+    // 删除
+    card.querySelector('.delete').onclick = () => {
+        removeMarker(idx);
+        if (p.placeId) addedIds.delete(p.placeId);
+        markersData.splice(idx, 1);
+        updateMarkers();
+        saveToStorage();
+        renderPlacesList();
+        renderRecommendedTags();
+        updateButtons();
+        clearRoutes();
+        showToast(`已删除：${p.name}`);
+    };
+
+    // 输入事件
+    card.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('change', () => {
+            const field = el.dataset.field;
+            if (field === 'lat' || field === 'lng') {
+                p[field] = parseFloat(el.value);
+            } else {
+                p[field] = el.value;
+            }
+            updateMarkers();
+            saveToStorage();
+        });
+    });
+
+    // 添加美食
+    card.querySelector('[data-action="add-food"]').onclick = () => addFood(p, card);
+
+    // 美食卡片事件
+    card.querySelectorAll('.food-card').forEach(fc => {
+        const fid = fc.dataset.foodId;
+        const food = p.foods.find(f => f.id === fid);
+        if (!food) return;
+
+        fc.querySelector('.food-action-btn.delete').onclick = () => {
+            p.foods = p.foods.filter(f => f.id !== fid);
+            saveToStorage();
+            renderPlacesList();
+        };
+
+        fc.querySelectorAll('input, textarea, select').forEach(el => {
+            el.addEventListener('change', () => {
+                if (el.dataset.f === 'reservation') food.reservation = el.checked;
+                else if (el.dataset.f === 'resDays') food.resDays = el.value;
+                else food[el.dataset.f] = el.value;
+                saveToStorage();
+            });
+        });
+    });
+
+    // 拖拽事件
+    initDragEvents(card, idx);
+
+    return card;
+}
+
+// ===== 初始化拖拽事件 =====
+function initDragEvents(card, idx) {
+    card.addEventListener('dragstart', e => {
+        dragSrcIdx = idx;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    card.addEventListener('dragover', e => {
+        e.preventDefault();
+        const target = e.target.closest('.place-card');
+        if (target && target !== card) target.classList.add('drag-over');
+    });
+
+    card.addEventListener('dragleave', e => {
+        const target = e.target.closest('.place-card');
+        if (target) target.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target.closest('.place-card');
+        if (!target || target === card) return;
+
+        const dstIdx = parseInt(target.dataset.index);
+        const tmp = markersData[dragSrcIdx];
+        markersData[dragSrcIdx] = markersData[dstIdx];
+        markersData[dstIdx] = tmp;
+
+        updateMarkers();
+        saveToStorage();
+        renderPlacesList();
+        target.classList.remove('drag-over');
+    });
+}
+
+// ===== 添加美食 =====
+function addFood(place, card) {
+    const food = {
+        id: 'f' + (globalFoodId++),
+        name: '',
+        dish: '',
+        hours: '',
+        closed: '',
+        reservation: false,
+        resDays: 0,
+        price: '',
+        notes: '',
+        isPreset: false
+    };
+
+    place.foods.push(food);
+    saveToStorage();
+
+    const list = card.querySelector('.food-list');
+    list.innerHTML = place.foods.map(f => createFoodCardHtml(f)).join('');
+    list.querySelector('.food-placeholder')?.remove();
+
+    // 绑定新美食事件
+    const fc = list.querySelector(`[data-food-id="${food.id}"]`);
+    fc.querySelector('.food-action-btn.delete').onclick = () => {
+        place.foods = place.foods.filter(f => f.id !== food.id);
+        saveToStorage();
+        renderPlacesList();
+    };
+
+    fc.querySelectorAll('input, textarea, select').forEach(el => {
+        el.addEventListener('change', () => {
+            if (el.dataset.f === 'reservation') food.reservation = el.checked;
+            else if (el.dataset.f === 'resDays') food.resDays = el.value;
+            else food[el.dataset.f] = el.value;
+            saveToStorage();
+        });
+    });
+
+    saveToStorage();
+}
+
+// ===== 创建美食卡片HTML =====
+function createFoodCardHtml(f) {
+    return `
+        <div class="food-card" data-food-id="${f.id}">
+            <div class="food-card-header">
+                <input type="text" class="food-name-input" value="${f.name}" data-f="name" placeholder="店名">
+                <div class="food-tags">
+                    ${f.reservation ? `<span class="food-tag reservation">⚠️ 需预约${f.resDays ? `·提前${f.resDays}天` : ''}</span>` : ''}
+                    ${f.closed ? `<span class="food-tag closed">休:${f.closed}</span>` : ''}
+                </div>
+            </div>
+            <div class="food-detail">
+                <div class="food-detail-item">
+                    <span class="food-detail-label">招牌:</span>
+                    <input type="text" value="${f.dish}" data-f="dish" placeholder="推荐菜">
+                </div>
+                <div class="food-detail-item">
+                    <span class="food-detail-label">人均:</span>
+                    <input type="text" value="${f.price}" data-f="price" placeholder="¥0">
+                </div>
+                <div class="food-detail-item">
+                    <span class="food-detail-label">营业:</span>
+                    <input type="text" value="${f.hours}" data-f="hours" placeholder="时间">
+                </div>
+                <div class="food-detail-item">
+                    <span class="food-detail-label">定休:</span>
+                    <input type="text" value="${f.closed}" data-f="closed" placeholder="周几">
+                </div>
+                <div class="food-detail-item">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:0.72rem;">
+                        <input type="checkbox" ${f.reservation ? 'checked' : ''} data-f="reservation">
+                        需预约
+                    </label>
+                </div>
+                <div class="food-detail-item">
+                    <span class="food-detail-label">提前:</span>
+                    <input type="text" value="${f.resDays}" data-f="resDays" placeholder="天数">
+                </div>
+            </div>
+            <textarea class="food-notes" data-f="notes" placeholder="备注：排队很长、只收现金等...">${f.notes || ''}</textarea>
+            <div class="food-actions">
+                <button class="food-action-btn delete">删除</button>
+            </div>
+        </div>
+    `;
+}
+
+// ===== 更新按钮状态 =====
+function updateButtons() {
+    planBtn.disabled = markersData.length < 2;
+    planBtn.querySelector('.btn-text').textContent = markersData.length < 2 ? '🚗 添加至少2个地点' : '🚗 规划路线';
+}
+
+// ===== 清空全部 =====
+function initClearAllBtn() {
+    clearAllBtn.onclick = () => {
+        clearAllMarkers();
+        markersData = [];
+        addedIds.clear();
+        localStorage.removeItem('nagoya_places');
+        renderPlacesList();
+        renderRecommendedTags();
+        updateButtons();
+        clearRoutes();
+        showToast('已清空');
+    };
+}
+
+// ===== 备忘录初始化 =====
+function initMemo() {
+    memoTextarea.value = localStorage.getItem('nagoya_memo') || '';
+
+    memoTextarea.addEventListener('input', () => {
+        localStorage.setItem('nagoya_memo', memoTextarea.value);
+    });
+}
+
+// ===== 出行方式切换 =====
+function initTravelModeTabs() {
+    document.querySelectorAll('.travel-mode-tab').forEach(tab => {
+        tab.onclick = () => {
+            switchTravelMode(tab.dataset.mode);
+        };
+    });
+}
+
+// ===== 规划按钮 =====
+function initPlanBtn() {
+    planBtn.onclick = planRoute;
+}
+
+// 挂载到window对象（供其他模块使用）
+window.addedIds = addedIds;
+window.globalFoodId = globalFoodId;
+window.showToast = showToast;
+window.renderRecommendedTags = renderRecommendedTags;
+window.initRecToggle = initRecToggle;
+window.addRecommendedPlace = addRecommendedPlace;
+window.initAddAllBtn = initAddAllBtn;
+window.renderPlacesList = renderPlacesList;
+window.createPlaceCard = createPlaceCard;
+window.addFood = addFood;
+window.createFoodCardHtml = createFoodCardHtml;
+window.updateButtons = updateButtons;
+window.initClearAllBtn = initClearAllBtn;
+window.initMemo = initMemo;
+window.initTravelModeTabs = initTravelModeTabs;
+window.initPlanBtn = initPlanBtn;
+
+/**
+ * 应用入口 - 初始化、存储、主逻辑
+ */
+
+// ===== 全局状态变量 =====
+const markersData = [];
+
+// ===== 初始化函数 =====
+function init() {
+    // 初始化地图
+    initMap();
+
+    // 从本地存储加载数据
+    loadFromStorage();
+
+    // 渲染UI
+    renderRecommendedTags();
+    renderPlacesList();
+
+    // 初始化备忘录
+    initMemo();
+
+    // 初始化事件绑定
+    initRecToggle();
+    initAddAllBtn();
+    initClearAllBtn();
+    initSearch();
+    initTravelModeTabs();
+    initPlanBtn();
+}
+
+// ===== 存储函数 =====
+
+/**
+ * 保存数据到本地存储
+ */
+function saveToStorage() {
+    localStorage.setItem('nagoya_places', JSON.stringify(markersData));
+}
+
+/**
+ * 从本地存储加载数据
+ */
+function loadFromStorage() {
+    const saved = localStorage.getItem('nagoya_places');
+    if (saved) {
+        markersData = JSON.parse(saved);
+        markersData.forEach((p, i) => {
+            addedIds.add(p.placeId);
+            addMarker(p, i + 1);
+        });
+    }
+    updateButtons();
+    if (markersData.length > 0) {
+        fitBounds();
+    }
+}
+
+// ===== 页面加载完成后初始化 =====
+document.addEventListener('DOMContentLoaded', init);
+
+// 挂载到window对象（供其他模块使用）
+window.markersData = markersData;
+window.init = init;
+window.saveToStorage = saveToStorage;
+window.loadFromStorage = loadFromStorage;
+</script>
+</body>
+</html>
