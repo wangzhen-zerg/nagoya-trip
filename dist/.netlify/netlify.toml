@@ -7,7 +7,7 @@ redirects = []
 [functions."*"]
 
 [build]
-publish = "/app/data/所有对话/主对话/名古屋旅行"
+publish = "/app/data/所有对话/主对话/名古屋旅行/dist"
 publishOrigin = "default"
 
 [build.environment]

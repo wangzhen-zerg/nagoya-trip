@@ -1,0 +1,606 @@
+/* ===== 全局样式 ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --primary: #DC2626;
+    --primary-light: #DC2626;
+    --primary-dark: #B91C1C;
+    --success: #059669;
+    --warning: #D97706;
+    --danger: #DC2626;
+    --jp-red: #BC002D;
+    --gray-50: #F9FAFB;
+    --gray-100: #F3F4F6;
+    --gray-200: #E5E7EB;
+    --gray-300: #D1D5DB;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --gray-600: #4B5563;
+    --gray-700: #374151;
+    --gray-800: #1F2937;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+    --radius: 12px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    overflow: hidden;
+    height: 100vh;
+}
+
+.app-container { display: flex; height: 100vh; }
+
+/* ===== 侧边栏 ===== */
+.sidebar {
+    width: 420px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.sidebar-content { flex: 1; overflow-y: auto; }
+
+/* ===== 头部 ===== */
+.header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    color: white;
+    flex-shrink: 0;
+}
+
+.header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+.header h1 { font-size: 1.1rem; font-weight: 600; }
+.header-subtitle { font-size: 0.75rem; opacity: 0.9; }
+
+.search-box { position: relative; }
+.search-input {
+    width: 100%;
+    padding: 10px 12px 10px 38px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.98);
+}
+
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); }
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    margin-top: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+}
+
+.search-results.active { display: block; }
+
+.search-result-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 0.85rem;
+}
+
+.search-result-item:hover { background: var(--gray-50); }
+.search-result-item:last-child { border-bottom: none; }
+.search-result-name { font-weight: 500; margin-bottom: 2px; }
+.search-result-address { font-size: 0.75rem; color: var(--gray-500); }
+
+/* ===== 预置推荐 ===== */
+.recommended-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+
+.section-title { font-size: 0.8rem; font-weight: 600; color: var(--gray-600); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.section-title .toggle-arrow { font-size: 0.65rem; transition: transform 0.2s; display: inline-block; }
+.section-title.collapsed .toggle-arrow { transform: rotate(-90deg); }
+.recommended-tags { transition: max-height 0.3s ease, opacity 0.2s; overflow: hidden; max-height: 800px; }
+.recommended-tags.collapsed { max-height: 0 !important; opacity: 0; padding: 0; }
+
+.add-all-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.add-all-btn:hover { background: #047857; }
+
+.recommended-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.recommended-tag {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 15px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.recommended-tag:hover { background: rgba(188,0,45,0.05); border-color: var(--primary-light); }
+.recommended-tag.added { background: rgba(5,150,105,0.1); border-color: var(--success); color: var(--success); }
+.recommended-tag .star { color: var(--warning); font-size: 0.65rem; }
+
+/* ===== 地点列表 ===== */
+.places-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
+.places-list.collapsed { max-height: 0 !important; opacity: 0; padding: 0; overflow: hidden; }
+
+.places-list { display: flex; flex-direction: column; gap: 10px; }
+
+.place-card {
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    overflow: hidden;
+}
+
+.place-card:hover { border-color: var(--primary-light); }
+.place-card.dragging { opacity: 0.5; transform: scale(1.02); box-shadow: var(--shadow-lg); }
+.place-card.drag-over { border-color: var(--primary); background: rgba(220,38,38,0.05); }
+
+.place-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    cursor: grab;
+}
+
+.place-number {
+    width: 26px;
+    height: 26px;
+    background: var(--jp-red);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.place-info { flex: 1; min-width: 0; }
+
+.place-name-input {
+    width: 100%;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: white;
+}
+
+.place-name-input:focus { outline: none; border-color: var(--primary); }
+
+.place-address {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+.place-coords {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--gray-400);
+    align-items: center;
+}
+
+.place-coords input {
+    width: 95px;
+    padding: 3px 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.place-coords input:focus { outline: none; border-color: var(--primary); }
+
+.place-actions { display: flex; gap: 4px; }
+
+.place-action-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.9rem;
+}
+
+.place-action-btn:hover { background: var(--gray-200); color: var(--gray-600); }
+.place-action-btn.delete:hover { background: rgba(220,38,38,0.1); color: var(--danger); }
+.place-action-btn.expand-btn { font-size: 0.8rem; }
+
+.place-card.expanded .expand-icon { transform: rotate(180deg); }
+
+/* ===== 地点详情（展开区域）====== */
+.place-details { display: none; padding: 0 12px 12px; border-top: 1px solid var(--gray-200); }
+
+.place-card.expanded .place-details { display: block; }
+
+.place-notes {
+    margin-top: 10px;
+}
+
+.place-notes label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 4px;
+}
+
+.place-notes textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.place-notes textarea:focus { outline: none; border-color: var(--primary); }
+
+/* ===== 附近美食 ===== */
+.nearby-food { margin-top: 12px; }
+
+.nearby-food-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    margin-bottom: 8px;
+}
+
+.add-food-btn {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    background: var(--warning);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.food-list { display: flex; flex-direction: column; gap: 8px; }
+
+.food-card {
+    background: white;
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--gray-200);
+}
+
+.food-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.food-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--gray-800);
+    flex: 1;
+}
+
+.food-name-input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.food-name-input:focus { outline: none; border-color: var(--primary); }
+
+.food-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.food-tag {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.food-tag.reservation { background: rgba(220,38,38,0.1); color: var(--danger); }
+.food-tag.closed { background: rgba(217,119,6,0.1); color: var(--warning); }
+
+.food-detail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 0.75rem;
+}
+
+.food-detail-item { display: flex; gap: 4px; }
+.food-detail-label { color: var(--gray-500); }
+.food-detail-value { color: var(--gray-700); }
+
+.food-detail-item.full-width { grid-column: 1 / -1; }
+
+.food-detail-item input,
+.food-detail-item textarea,
+.food-detail-item select {
+    flex: 1;
+    padding: 3px 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.food-detail-item input:focus,
+.food-detail-item textarea:focus,
+.food-detail-item select:focus { outline: none; border-color: var(--primary); }
+
+.food-notes {
+    margin-top: 6px;
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    resize: none;
+    font-family: inherit;
+}
+
+.food-notes:focus { outline: none; border-color: var(--primary); }
+
+.food-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.food-action-btn {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.food-action-btn.save { background: var(--success); color: white; }
+.food-action-btn.delete { background: var(--gray-200); color: var(--gray-600); }
+.food-action-btn.delete:hover { background: var(--danger); color: white; }
+
+.food-placeholder {
+    text-align: center;
+    padding: 16px;
+    color: var(--gray-400);
+    font-size: 0.8rem;
+}
+
+/* ===== 空状态 ===== */
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--gray-400);
+}
+
+.empty-state-icon { font-size: 2rem; margin-bottom: 8px; }
+.empty-state-text { font-size: 0.85rem; }
+
+.clear-btn {
+    font-size: 0.78rem;
+    color: var(--danger);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.clear-btn:hover { background: rgba(220,38,38,0.1); }
+
+/* ===== 旅行备忘录 ===== */
+.memo-section {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(217,119,6,0.05) 0%, rgba(245,158,11,0.05) 100%);
+    border-top: 1px solid var(--gray-200);
+    flex-shrink: 0;
+}
+
+.memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.memo-title { font-size: 0.8rem; font-weight: 600; color: var(--warning); display: flex; align-items: center; gap: 6px; }
+
+.memo-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid rgba(217,119,6,0.3);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    resize: vertical;
+    background: white;
+    font-family: inherit;
+}
+
+.memo-textarea:focus { outline: none; border-color: var(--warning); }
+
+/* ===== 出行方式 ===== */
+.travel-mode-section { padding: 12px 16px; background: var(--gray-50); border-top: 1px solid var(--gray-200); flex-shrink: 0; }
+
+.travel-mode-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.travel-mode-tab {
+    flex: 1;
+    padding: 8px;
+    border: 2px solid var(--gray-200);
+    background: white;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+}
+
+.travel-mode-tab:hover { border-color: var(--primary-light); }
+.travel-mode-tab.active { border-color: var(--jp-red); background: rgba(188,0,45,0.05); color: var(--jp-red); font-weight: 500; }
+.travel-mode-icon { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+
+/* ===== 路线信息 ===== */
+.route-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+.route-panel.expanded { max-height: 300px; overflow-y: auto; }
+
+.route-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    border-radius: var(--radius);
+    color: white;
+    margin-bottom: 10px;
+}
+
+.route-total-label { font-size: 0.75rem; opacity: 0.9; }
+.route-total-value { font-size: 1.3rem; font-weight: 700; }
+.route-total-rmb { font-size: 0.7rem; opacity: 0.8; }
+
+.route-segments { display: flex; flex-direction: column; gap: 6px; }
+
+.route-segment {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--gray-50);
+    border-radius: 8px;
+}
+
+.segment-icon { font-size: 1.1rem; }
+.segment-info { flex: 1; }
+.segment-route { font-size: 0.82rem; color: var(--gray-700); margin-bottom: 2px; }
+.segment-detail { font-size: 0.72rem; color: var(--gray-500); }
+.segment-fee { font-size: 0.88rem; font-weight: 600; color: var(--success); }
+
+.fee-breakdown {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(5,150,105,0.08);
+    border-radius: var(--radius);
+    border: 1px dashed rgba(5,150,105,0.3);
+}
+
+.fee-breakdown-title { font-size: 0.78rem; font-weight: 600; color: var(--success); margin-bottom: 6px; }
+.fee-item { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--gray-600); margin-bottom: 3px; }
+
+/* ===== 规划按钮 ===== */
+.plan-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--jp-red) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.plan-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.plan-btn:disabled { background: var(--gray-300); cursor: not-allowed; transform: none; box-shadow: none; }
+.plan-btn.loading .btn-text { display: none; }
+.plan-btn .btn-loading { display: none; }
+.plan-btn.loading .btn-loading { display: flex; align-items: center; gap: 8px; }
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 地图 ===== */
+.map-container { flex: 1; position: relative; }
+#map { width: 100%; height: 100%; }
+
+/* ===== 提示 ===== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--gray-800);
+    color: white;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+    .sidebar { width: 100%; position: absolute; bottom: 0; left: 0; height: auto; max-height: 75vh; border-radius: 16px 16px 0 0; }
+    .map-container { height: 100vw; }
+    .sidebar-content { max-height: calc(75vh - 200px); }
+    .places-list { max-height: none; }
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
