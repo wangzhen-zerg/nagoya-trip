@@ -22,6 +22,7 @@ function init() {
 
     // 初始化事件绑定
     initRecToggle();
+    initPlacesToggle();
     initAddAllBtn();
     initClearAllBtn();
     initSearch();

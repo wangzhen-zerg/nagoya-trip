@@ -156,6 +156,7 @@ body {
 
 /* ===== 地点列表 ===== */
 .places-section { padding: 12px 16px; border-bottom: 1px solid var(--gray-200); }
+.places-list.collapsed { max-height: 0 !important; opacity: 0; padding: 0; overflow: hidden; }
 
 .places-list { display: flex; flex-direction: column; gap: 10px; transition: max-height 0.3s ease, opacity 0.2s; overflow: hidden; }
 .places-list.collapsed { max-height: 0 !important; opacity: 0; }
@@ -1961,6 +1962,16 @@ function initRecToggle() {
     };
 }
 
+function initPlacesToggle() {
+    const placesToggle = document.getElementById('placesToggle');
+    const placesList = document.getElementById('placesList');
+
+    placesToggle.onclick = () => {
+        placesToggle.classList.toggle('collapsed');
+        placesList.classList.toggle('collapsed');
+    };
+}
+
 // 目的地收起/展开
 function initPlacesToggle() {
     const placesToggle = document.getElementById('placesToggle');
@@ -2474,6 +2485,7 @@ function init() {
     // 初始化事件绑定
     initRecToggle();
     initPlacesToggle();
+    initPlacesToggle();
     initAddAllBtn();
     initClearAllBtn();
     initSearch();
@@ -2703,8 +2715,7 @@ let autoSaveTimer = null; // 防抖定时器
 
 // ===== Token管理 =====
 function getToken() {
-    const p = ['REDACTED1','REDACTED2','REDACTED3','REDACTED4'];
-    return localStorage.getItem('nagoya_github_token') || DEFAULT_TOKEN;
+    return localStorage.getItem('nagoya_github_token') || '';
 }
 
 function saveToken(token) {
@@ -3115,6 +3126,7 @@ initWithUrlSupport = async function() {
     
     // 8. 初始化事件绑定
     initRecToggle();
+    initPlacesToggle();
     initPlacesToggle();
     initAddAllBtn();
     initClearAllBtn();

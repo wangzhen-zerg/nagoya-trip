@@ -71,6 +71,17 @@ function initRecToggle() {
     };
 }
 
+// ===== 目的地收起/展开 =====
+function initPlacesToggle() {
+    const placesToggle = document.getElementById('placesToggle');
+    const placesList = document.getElementById('placesList');
+
+    placesToggle.onclick = () => {
+        placesToggle.classList.toggle('collapsed');
+        placesList.classList.toggle('collapsed');
+    };
+}
+
 // ===== 添加推荐地点 =====
 function addRecommendedPlace(p) {
     const data = {
